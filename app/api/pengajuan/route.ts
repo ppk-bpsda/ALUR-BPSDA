@@ -6,14 +6,14 @@ export async function POST(req: Request) {
   const body = await req.json();
 
   const {
-    dpa_id, tanggal, uraian_kegiatan, penyedia_id, penerima_id,
+    dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima,
     rincian, potongan,
   }: {
     dpa_id: string;
     tanggal: string;
     uraian_kegiatan: string;
     penyedia_id: string | null;
-    penerima_id: string | null;
+    nama_penerima: string | null;
     rincian: { nama_item: string; qty: number; satuan: string; harga_satuan: number }[];
     potongan: { jenis_pajak: string; persentase: number; nominal: number }[];
   } = body;
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     .from("pengajuan_belanja")
     .insert({
       dpa_id, tanggal, uraian_kegiatan, penyedia_id: penyedia_id || null,
-      penerima_id: penerima_id || null, jumlah_pengajuan, status: "draft",
+      nama_penerima: nama_penerima || null, jumlah_pengajuan, status: "draft",
     })
     .select()
     .single();

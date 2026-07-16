@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
+import { getPeriode, tahapanLabel } from "@/lib/periode";
 import { Wallet, Receipt, FileSpreadsheet, ClipboardList } from "lucide-react";
 
 const statusStyle: Record<string, string> = {
@@ -11,30 +12,41 @@ const statusStyle: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
+  const { tahun, tahapan } = getPeriode();
   const supabase = createClient();
 
-  const { data: rekap } = await supabase.from("rekap_realisasi").select("*");
+  const { data: rekap } = await supabase
+    .from("rekap_realisasi")
+    .select("*")
+    .eq("tahun_anggaran", tahun)
+    .eq("tahapan", tahapan);
   const totalPagu = (rekap ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
   const totalRealisasi = (rekap ?? []).reduce((s, r: any) => s + Number(r.total_realisasi || 0), 0);
   const totalSisa = totalPagu - totalRealisasi;
 
   const { data: pengajuanTerbaru } = await supabase
     .from("pengajuan_belanja")
-    .select("id, nomor_bukti, uraian_kegiatan, jumlah_pengajuan, status, created_at")
+    .select("id, nomor_bukti, uraian_kegiatan, jumlah_pengajuan, status, created_at, dpa:dpa!inner(tahun_anggaran, tahapan)")
+    .eq("dpa.tahun_anggaran", tahun)
+    .eq("dpa.tahapan", tahapan)
     .order("created_at", { ascending: false })
     .limit(8);
 
   const bulanIni = new Date();
   const { count: pengajuanBulanIni } = await supabase
     .from("pengajuan_belanja")
-    .select("id", { count: "exact", head: true })
+    .select("id, dpa:dpa!inner(tahun_anggaran, tahapan)", { count: "exact", head: true })
+    .eq("dpa.tahun_anggaran", tahun)
+    .eq("dpa.tahapan", tahapan)
     .gte("created_at", new Date(bulanIni.getFullYear(), bulanIni.getMonth(), 1).toISOString());
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-xl text-slate-900">Selamat datang kembali, Admin</h1>
-        <p className="text-sm text-slate-500">Ringkasan anggaran &amp; pengajuan seluruh tahun anggaran</p>
+        <p className="text-sm text-slate-500">
+          Ringkasan anggaran &amp; pengajuan -- Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
-
-const TAHUN_SEKARANG = new Date().getFullYear();
+import { getPeriode, tahapanLabel } from "@/lib/periode";
 
 export default async function RekapPage() {
+  const { tahun, tahapan } = getPeriode();
   const supabase = createClient();
   const { data: rekap } = await supabase
     .from("rekap_realisasi")
     .select("*")
-    .eq("tahun_anggaran", TAHUN_SEKARANG)
+    .eq("tahun_anggaran", tahun)
+    .eq("tahapan", tahapan)
     .order("kode_sub_kegiatan");
 
   const totalPagu = (rekap ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
@@ -19,7 +20,8 @@ export default async function RekapPage() {
       <div>
         <h1 className="font-serif text-xl text-slate-900">Rekap Realisasi Anggaran</h1>
         <p className="text-sm text-slate-500">
-          Tahun Anggaran {TAHUN_SEKARANG}. Dihitung otomatis dari status pengajuan "disetujui"/"dicairkan".
+          Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)}. Dihitung otomatis dari status pengajuan
+          "disetujui"/"dicairkan". Ganti periode lewat menu akun di kanan atas untuk melihat tahapan lain.
         </p>
       </div>
 

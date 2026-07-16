@@ -29,12 +29,11 @@ export async function GET(req: NextRequest) {
     .from("pengajuan_belanja")
     .select(
       `
-      id, nomor_bukti, nomor_nota_dinas, tanggal, uraian_kegiatan, jumlah_pengajuan,
-      penerima:penerima(nama_penerima),
+      id, dpa_id, nomor_bukti, nomor_nota_dinas, tanggal, uraian_kegiatan, jumlah_pengajuan, nama_penerima,
       penyedia:penyedia(nama_penyedia, nama_direktur, alamat, npwp, rekening_bank),
       dpa:dpa (
         tahun_anggaran, tahapan, pagu_anggaran, nomor_dpa,
-        pptk:pptk(nama, nip, nomor_sk),
+        pptk:pejabat_skpd(nama, nip, nomor_sk),
         rekening:rekening_belanja (
           kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana,
           sub_kegiatan:sub_kegiatan (
@@ -64,6 +63,21 @@ export async function GET(req: NextRequest) {
     .from("potongan_pajak")
     .select("*")
     .eq("pengajuan_id", pengajuanId);
+
+  // Realisasi sebelum pengajuan ini -- jumlah pengajuan lain yang sudah
+  // "disetujui"/"dicairkan" di rekening (DPA) yang sama, supaya sisa
+  // anggaran yang tercetak di dokumen konsisten dengan Rekap Realisasi.
+  const dpaIdForRealisasi = (pengajuan as any).dpa_id;
+  const { data: realisasiLainRows } = await supabase
+    .from("pengajuan_belanja")
+    .select("jumlah_pengajuan")
+    .eq("dpa_id", dpaIdForRealisasi)
+    .in("status", ["disetujui", "dicairkan"])
+    .neq("id", pengajuanId);
+  const realisasiSebelum = (realisasiLainRows ?? []).reduce(
+    (s: number, r: any) => s + Number(r.jumlah_pengajuan || 0),
+    0
+  );
 
   const tahunAnggaran: number = (pengajuan as any).dpa?.tahun_anggaran ?? new Date().getFullYear();
   const { data: kpaRow } = await supabase
@@ -131,8 +145,8 @@ export async function GET(req: NextRequest) {
     uraian_kegiatan_lengkap: pengajuan.uraian_kegiatan,
     jumlah_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
     total_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
-    realisasi_sebelum: formatRupiah(0),
-    sisa_anggaran: formatRupiah((dpa?.pagu_anggaran || 0) - pengajuan.jumlah_pengajuan),
+    realisasi_sebelum: formatRupiah(realisasiSebelum),
+    sisa_anggaran: formatRupiah((dpa?.pagu_anggaran || 0) - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)),
     nomor_nota_dinas: pengajuan.nomor_nota_dinas || "-",
     nomor_bukti: pengajuan.nomor_bukti || "-",
     hari_tanggal: formatHariTanggal(pengajuan.tanggal),
@@ -149,7 +163,7 @@ export async function GET(req: NextRequest) {
     nama_bendahara: bppRow?.nama || "-",
     nip_bendahara: bppRow?.nip || "-",
 
-    nama_penerima: (pengajuan as any).penerima?.nama_penerima || "-",
+    nama_penerima: (pengajuan as any).nama_penerima || "-",
 
     jumlah_pengajuan_angka: formatRupiah(pengajuan.jumlah_pengajuan),
     jumlah_pengajuan_terbilang: terbilang(Number(pengajuan.jumlah_pengajuan)),

@@ -1,7 +1,34 @@
 import Sidebar from "@/components/Sidebar";
+import AccountMenu from "@/components/AccountMenu";
+import { createClient } from "@/lib/supabase/server";
+import { getPeriode, tahapanLabel } from "@/lib/periode";
 import { Bell, Search } from "lucide-react";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { tahun, tahapan } = getPeriode();
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let displayName = "Admin";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username, nama")
+      .eq("id", user.id)
+      .maybeSingle();
+    displayName = profile?.nama || profile?.username || user.email?.split("@")[0] || "Admin";
+  }
+  const initials = displayName
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "AD";
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
@@ -16,12 +43,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <div className="flex items-center gap-4">
             <Bell className="h-5 w-5 text-slate-400" />
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center font-medium">
-                AD
-              </div>
-              <span className="text-sm text-slate-600 hidden sm:block">Admin</span>
-            </div>
+            <AccountMenu
+              displayName={displayName}
+              initials={initials}
+              tahun={tahun}
+              tahapanLabel={tahapanLabel(tahapan)}
+            />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>

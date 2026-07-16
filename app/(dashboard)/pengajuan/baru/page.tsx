@@ -21,13 +21,14 @@ export default function PengajuanBaruPage() {
 
   const [dpaOptions, setDpaOptions] = useState<any[]>([]);
   const [penyediaOptions, setPenyediaOptions] = useState<any[]>([]);
-  const [penerimaOptions, setPenerimaOptions] = useState<any[]>([]);
+  const [penerimaSaran, setPenerimaSaran] = useState<string[]>([]);
+  const [periode, setPeriode] = useState<{ tahun: number; tahapan: string } | null>(null);
 
   const [dpaId, setDpaId] = useState("");
   const [tanggal, setTanggal] = useState(() => new Date().toISOString().slice(0, 10));
   const [uraian, setUraian] = useState("");
   const [penyediaId, setPenyediaId] = useState("");
-  const [penerimaId, setPenerimaId] = useState("");
+  const [namaPenerima, setNamaPenerima] = useState("");
   const [rincian, setRincian] = useState<Rincian[]>([{ nama_item: "", qty: 1, satuan: "", harga_satuan: 0 }]);
   const [potongan, setPotongan] = useState<Potongan[]>(PAJAK_DEFAULT);
   const [saving, setSaving] = useState(false);
@@ -35,18 +36,36 @@ export default function PengajuanBaruPage() {
 
   useEffect(() => {
     (async () => {
-      const tahun = new Date().getFullYear();
+      // Periode aktif (tahun + tahapan) disimpan di cookie httpOnly oleh
+      // server saat login/ganti periode -- diambil lewat endpoint kecil
+      // ini supaya pilihan rekening/DPA yang muncul selalu sesuai
+      // tahapan yang sedang aktif, bukan semua tahapan tercampur.
+      const periodeRes = await fetch("/api/periode-aktif").then((r) => r.json());
+      setPeriode(periodeRes);
+
       const { data: dpa } = await supabase
         .from("dpa")
-        .select("id, tahapan, pagu_anggaran, rekening:rekening_belanja(kode_rekening, jenis_belanja, sub_kegiatan:sub_kegiatan(nama_sub_kegiatan))")
-        .eq("tahun_anggaran", tahun);
+        .select(
+          "id, tahapan, pagu_anggaran, rekening:rekening_belanja(kode_rekening, jenis_belanja, sub_kegiatan:sub_kegiatan(nama_sub_kegiatan))"
+        )
+        .eq("tahun_anggaran", periodeRes.tahun)
+        .eq("tahapan", periodeRes.tahapan);
       setDpaOptions(dpa ?? []);
 
       const { data: penyedia } = await supabase.from("penyedia").select("id, nama_penyedia").order("nama_penyedia");
       setPenyediaOptions(penyedia ?? []);
 
-      const { data: penerima } = await supabase.from("penerima").select("id, nama_penerima").order("nama_penerima");
-      setPenerimaOptions(penerima ?? []);
+      // Tidak ada lagi tabel `penerima` terpisah (sudah dihapus dari skema)
+      // -- nama penerima sekarang teks bebas, tapi tetap dikasih saran
+      // (datalist) dari nama-nama yang pernah dipakai sebelumnya supaya
+      // penulisannya konsisten.
+      const { data: pernahDipakai } = await supabase
+        .from("pengajuan_belanja")
+        .select("nama_penerima")
+        .not("nama_penerima", "is", null)
+        .limit(200);
+      const unik = Array.from(new Set((pernahDipakai ?? []).map((r: any) => r.nama_penerima).filter(Boolean)));
+      setPenerimaSaran(unik as string[]);
     })();
   }, []);
 
@@ -74,7 +93,7 @@ export default function PengajuanBaruPage() {
         tanggal,
         uraian_kegiatan: uraian,
         penyedia_id: penyediaId || null,
-        penerima_id: penerimaId || null,
+        nama_penerima: namaPenerima.trim() || null,
         rincian,
         potongan: potongan.filter((p) => p.nominal > 0),
       }),
@@ -94,6 +113,10 @@ export default function PengajuanBaruPage() {
         <h1 className="font-serif text-xl text-slate-900">Pengajuan Belanja Baru</h1>
         <p className="text-sm text-slate-500">
           Isi sekali di sini -- Nota Dinas, SPP/SPTJB, dan Kwitansi GU akan dibuat otomatis dari data yang sama.
+          {periode && (
+            <> Daftar rekening di bawah mengikuti periode aktif: Tahun Anggaran {periode.tahun}, Tahapan{" "}
+              {periode.tahapan}.</>
+          )}
         </p>
       </div>
 
@@ -155,19 +178,21 @@ export default function PengajuanBaruPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Penerima Uang GU -- cari & pilih</label>
-            <select
-              value={penerimaId}
-              onChange={(e) => setPenerimaId(e.target.value)}
+            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Penerima Uang GU</label>
+            <input
+              list="saran-penerima"
+              value={namaPenerima}
+              onChange={(e) => setNamaPenerima(e.target.value)}
+              placeholder="Ketik nama penerima"
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none"
-            >
-              <option value="">-- pilih penerima --</option>
-              {penerimaOptions.map((p: any) => (
-                <option key={p.id} value={p.id}>{p.nama_penerima}</option>
+            />
+            <datalist id="saran-penerima">
+              {penerimaSaran.map((nama) => (
+                <option key={nama} value={nama} />
               ))}
-            </select>
+            </datalist>
             <p className="text-xs text-slate-400 mt-1">
-              Belum ada di daftar? Tambahkan dulu lewat menu "Penerima", lalu kembali ke sini.
+              Ketik bebas -- saran muncul dari nama yang pernah dipakai sebelumnya.
             </p>
           </div>
         </div>

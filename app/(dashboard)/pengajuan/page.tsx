@@ -1,16 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
+import { getPeriode, tahapanLabel } from "@/lib/periode";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import GenerateButtons from "./GenerateButtons";
 
 export default async function PengajuanPage() {
+  const { tahun, tahapan } = getPeriode();
   const supabase = createClient();
   const { data: list } = await supabase
     .from("pengajuan_belanja")
     .select(
-      "id, nomor_bukti, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa(rekening:rekening_belanja(kode_rekening))"
+      "id, nomor_bukti, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa!inner(tahun_anggaran, tahapan, rekening:rekening_belanja(kode_rekening))"
     )
+    .eq("dpa.tahun_anggaran", tahun)
+    .eq("dpa.tahapan", tahapan)
     .order("created_at", { ascending: false });
 
   return (
@@ -18,7 +22,9 @@ export default async function PengajuanPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-serif text-xl text-slate-900">Pengajuan Belanja</h1>
-          <p className="text-sm text-slate-500">Rekap seluruh pengajuan -- bisa diedit/dihapus dan dicetak jadi dokumen.</p>
+          <p className="text-sm text-slate-500">
+            Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)} -- dicetak jadi dokumen dari sini.
+          </p>
         </div>
         <Link
           href="/pengajuan/baru"

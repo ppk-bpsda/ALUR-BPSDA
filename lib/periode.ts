@@ -36,9 +36,25 @@ export function setPeriodeCookies(tahun: number, tahapan: string) {
   });
 }
 
-export function getPeriode() {
+// Dipakai kalau cookie periode belum ada (mis. sesi lama sebelum fitur ini
+// ada, atau cookie kadaluarsa) -- supaya query di halaman tidak filter
+// dengan NaN/"" yang membuat hasilnya kosong atau error.
+const DEFAULT_TAHUN = TAHUN_OPTIONS[0];
+const DEFAULT_TAHAPAN = TAHAPAN_OPTIONS[0].value;
+
+export function getPeriode(): { tahun: number; tahapan: (typeof TAHAPAN_OPTIONS)[number]["value"] } {
   const cookieStore = cookies();
-  const tahun = Number(cookieStore.get(COOKIE_TAHUN)?.value);
-  const tahapan = cookieStore.get(COOKIE_TAHAPAN)?.value ?? "";
+  const tahunRaw = Number(cookieStore.get(COOKIE_TAHUN)?.value);
+  const tahapanRaw = cookieStore.get(COOKIE_TAHAPAN)?.value ?? "";
+
+  const tahun = (TAHUN_OPTIONS as readonly number[]).includes(tahunRaw) ? tahunRaw : DEFAULT_TAHUN;
+  const tahapan = TAHAPAN_OPTIONS.some((t) => t.value === tahapanRaw)
+    ? (tahapanRaw as (typeof TAHAPAN_OPTIONS)[number]["value"])
+    : DEFAULT_TAHAPAN;
+
   return { tahun, tahapan };
+}
+
+export function tahapanLabel(value: string) {
+  return TAHAPAN_OPTIONS.find((t) => t.value === value)?.label ?? value;
 }
