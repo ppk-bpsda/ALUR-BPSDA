@@ -1,11 +1,17 @@
 import { cookies } from "next/headers";
 
-// Sesuaikan daftar tahun ini kalau perlu -- ini asumsi saya berdasarkan
-// komentar "Tahun Anggaran 2026 & seterusnya" di halaman login.
-export const TAHUN_OPTIONS = [2025, 2026, 2027] as const;
+// Tahun Anggaran yang tersedia untuk dipilih saat login & di menu
+// "Ganti Periode". Sesuai kebutuhan: 2026 s/d 2036.
+export const TAHUN_OPTIONS = [
+  2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036,
+] as const;
 
+// Tahapan DPA -- HARUS sama persis dengan nilai enum `tahapan_dpa` di
+// database (lihat supabase/migrations/20260714100001_init_schema_v2.sql:
+// create type tahapan_dpa as enum ('murni', 'pergeseran', 'perubahan')).
 export const TAHAPAN_OPTIONS = [
   { value: "murni", label: "Murni" },
+  { value: "pergeseran", label: "Pergeseran" },
   { value: "perubahan", label: "Perubahan" },
 ] as const;
 
