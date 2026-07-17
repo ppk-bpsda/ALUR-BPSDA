@@ -22,6 +22,13 @@ export default async function PenyediaPage() {
         <Field name="alamat" label="Alamat" className="sm:col-span-2" />
         <Field name="npwp" label="NPWP" />
         <Field name="rekening_bank" label="Rekening Bank" />
+        <div className="flex items-center gap-2 sm:col-span-2">
+          <input type="checkbox" name="pph_final_umkm" id="pph_final_umkm" className="h-4 w-4" />
+          <label htmlFor="pph_final_umkm" className="text-sm text-slate-600">
+            Penyedia sudah punya Surat Keterangan PPh Final UMKM (PP 23/2018, tarif 0,5%) -- kalau
+            dicentang, kalkulator pajak di Pengajuan Belanja otomatis pakai PPh Final, bukan PPh 22/23.
+          </label>
+        </div>
         <div className="sm:col-span-2">
           <button
             type="submit"
@@ -40,6 +47,7 @@ export default async function PenyediaPage() {
               <th className="font-medium px-5 py-2.5">Direktur</th>
               <th className="font-medium px-5 py-2.5">NPWP</th>
               <th className="font-medium px-5 py-2.5">Rekening Bank</th>
+              <th className="font-medium px-5 py-2.5">PPh Final UMKM</th>
               <th className="font-medium px-5 py-2.5"></th>
             </tr>
           </thead>
@@ -50,6 +58,13 @@ export default async function PenyediaPage() {
                 <td className="px-5 py-3 text-slate-500">{row.nama_direktur}</td>
                 <td className="px-5 py-3 text-slate-500">{row.npwp}</td>
                 <td className="px-5 py-3 text-slate-500">{row.rekening_bank}</td>
+                <td className="px-5 py-3 text-slate-500">
+                  {row.pph_final_umkm ? (
+                    <span className="text-xs bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5">Ya</span>
+                  ) : (
+                    <span className="text-xs text-slate-400">--</span>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-right">
                   <form action={deletePenyedia}>
                     <input type="hidden" name="id" value={row.id} />

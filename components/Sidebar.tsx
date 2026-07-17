@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, Building2, Wallet,
-  ClipboardList, ShieldCheck, FileSpreadsheet, LogOut,
+  ClipboardList, ShieldCheck, FileSpreadsheet, BarChart3, LogOut,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 
@@ -24,7 +24,13 @@ const navGroups = [
       { icon: Building2, name: "Penyedia Barang/Jasa", href: "/penyedia" },
     ],
   },
-  { label: "Laporan", items: [{ icon: FileSpreadsheet, name: "Rekap Realisasi", href: "/rekap" }] },
+  {
+    label: "Laporan",
+    items: [
+      { icon: FileSpreadsheet, name: "Rekap Realisasi", href: "/rekap" },
+      { icon: BarChart3, name: "Laporan Realisasi", href: "/laporan" },
+    ],
+  },
 ];
 
 export default function Sidebar() {
