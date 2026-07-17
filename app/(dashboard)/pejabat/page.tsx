@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getPeriode } from "@/lib/periode";
 import { addPejabat, updatePejabat, deletePejabat } from "./actions";
-import { ShieldCheck, Trash2 } from "lucide-react";
+import { ShieldCheck, Trash2, AlertTriangle } from "lucide-react";
 
 const JABATAN_LABEL: Record<string, string> = {
   KPA: "Kuasa Pengguna Anggaran (KPA)",
@@ -15,7 +15,7 @@ export default async function PejabatPage() {
 
   const { data: pejabat } = await supabase
     .from("pejabat_skpd")
-    .select("id, jabatan, nama, nip, pangkat, nomor_sk, tanggal_sk")
+    .select("id, jabatan, nama, nip, pangkat, nomor_sk, judul_sk, tanggal_sk")
     .eq("tahun_anggaran", tahun)
     .order("jabatan")
     .order("nama");
@@ -23,17 +23,31 @@ export default async function PejabatPage() {
   const groups: Record<string, any[]> = { KPA: [], PPTK: [], BENDAHARA_PENGELUARAN_PEMBANTU: [] };
   (pejabat ?? []).forEach((p: any) => groups[p.jabatan]?.push(p));
 
+  const pptkBelumLengkap = groups.PPTK.filter((p) => !p.nip);
+
   return (
     <div className="space-y-8 max-w-5xl">
       <div>
-        <h1 className="font-serif text-xl text-slate-900">Pejabat SKPD</h1>
+        <h1 className="font-serif text-xl text-slate-900">Manajemen Akun (KPA/PPTK/BPP)</h1>
         <p className="text-sm text-slate-500">
-          Data pegawai KPA, PPTK, dan Bendahara Pengeluaran Pembantu untuk Tahun Anggaran {tahun}. Dipakai
-          otomatis mengisi Nota Dinas, SPP/SPTJB, dan Kwitansi GU. Khusus PPTK: pegawai mana yang bertanggung
-          jawab atas rekening tertentu diatur di menu <span className="font-medium">Rekening &amp; Pagu (DPA)</span>,
-          bukan di sini -- di sini cukup daftar pegawainya saja.
+          Data pejabat untuk Tahun Anggaran {tahun} -- dipakai otomatis mengisi Nota Dinas, SPP/SPTJB,
+          dan Kwitansi GU. Menu ini bisa diubah sewaktu-waktu kalau ada promosi/mutasi jabatan.
+          Khusus <span className="font-medium">nama PPTK</span>: sudah otomatis tersinkron (dicocokkan
+          berdasarkan nama) dengan data PPTK di menu <span className="font-medium">Rekening &amp; Pagu
+          (DPA)</span> yang diimpor dari file lampiran Anda -- lengkapi NIP dan Pangkat/Gol di bawah untuk
+          nama-nama yang sudah muncul.
         </p>
       </div>
+
+      {pptkBelumLengkap.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-2.5 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <p>
+            {pptkBelumLengkap.length} PPTK dari hasil impor Rekening &amp; Pagu belum ada NIP-nya --{" "}
+            {pptkBelumLengkap.map((p) => p.nama).join(", ")}. Lengkapi lewat form edit di bawah.
+          </p>
+        </div>
+      )}
 
       {(Object.keys(JABATAN_LABEL) as Array<keyof typeof JABATAN_LABEL>).map((jabatan) => (
         <div key={jabatan} className="space-y-3">
@@ -68,15 +82,24 @@ export default async function PejabatPage() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-xs font-medium text-slate-600 mb-1 block">Pangkat</label>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Pangkat/Gol</label>
                   <input
                     name="pangkat"
                     defaultValue={row.pangkat ?? ""}
-                    placeholder="mis. Penata Tk. I"
+                    placeholder="mis. Penata Tk. I (III/d)"
                     className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-5">
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Judul SK</label>
+                  <input
+                    name="judul_sk"
+                    defaultValue={row.judul_sk ?? ""}
+                    placeholder={`mis. Penunjukan ${JABATAN_LABEL[jabatan].split(" (")[0]}`}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
+                  />
+                </div>
+                <div className="sm:col-span-3">
                   <label className="text-xs font-medium text-slate-600 mb-1 block">Nomor SK</label>
                   <input
                     name="nomor_sk"
@@ -84,7 +107,7 @@ export default async function PejabatPage() {
                     className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-3">
                   <label className="text-xs font-medium text-slate-600 mb-1 block">Tanggal SK</label>
                   <input
                     type="date"
@@ -93,7 +116,7 @@ export default async function PejabatPage() {
                     className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
                   />
                 </div>
-                <div className="sm:col-span-1">
+                <div className="sm:col-span-3">
                   <button
                     type="submit"
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg px-2 py-2"
@@ -101,11 +124,11 @@ export default async function PejabatPage() {
                     Simpan
                   </button>
                 </div>
-                <div className="sm:col-span-12 flex justify-end -mt-2">
+                <div className="sm:col-span-3">
                   <button
                     type="submit"
                     formAction={deletePejabat}
-                    className="text-rose-500 hover:text-rose-700 text-xs flex items-center gap-1"
+                    className="w-full flex items-center justify-center gap-1 text-rose-500 hover:text-rose-700 text-xs border border-rose-200 rounded-lg px-2 py-2"
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Hapus
                   </button>
@@ -138,21 +161,29 @@ export default async function PejabatPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-slate-600 mb-1 block">Pangkat</label>
+              <label className="text-xs font-medium text-slate-600 mb-1 block">Pangkat/Gol</label>
               <input
                 name="pangkat"
-                placeholder="mis. Penata Tk. I"
+                placeholder="mis. Penata Tk. I (III/d)"
                 className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
               />
             </div>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-5">
+              <label className="text-xs font-medium text-slate-600 mb-1 block">Judul SK</label>
+              <input
+                name="judul_sk"
+                placeholder={`mis. Penunjukan ${JABATAN_LABEL[jabatan].split(" (")[0]}`}
+                className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
+              />
+            </div>
+            <div className="sm:col-span-3">
               <label className="text-xs font-medium text-slate-600 mb-1 block">Nomor SK</label>
               <input
                 name="nomor_sk"
                 className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
               />
             </div>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-3">
               <label className="text-xs font-medium text-slate-600 mb-1 block">Tanggal SK</label>
               <input
                 type="date"
@@ -160,7 +191,7 @@ export default async function PejabatPage() {
                 className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
               />
             </div>
-            <div className="sm:col-span-1">
+            <div className="sm:col-span-3">
               <button
                 type="submit"
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg px-2 py-2"

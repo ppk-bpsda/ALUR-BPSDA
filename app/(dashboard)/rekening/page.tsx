@@ -87,7 +87,8 @@ export default async function RekeningPage() {
             <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
               <th className="font-medium px-3 py-2.5">Sub Kegiatan</th>
               <th className="font-medium px-3 py-2.5">Kode Rekening</th>
-              <th className="font-medium px-3 py-2.5">Belanja</th>
+              <th className="font-medium px-3 py-2.5">Uraian Belanja</th>
+              <th className="font-medium px-3 py-2.5">Kelompok</th>
               <th className="font-medium px-3 py-2.5">Sumber Dana</th>
               <th className="font-medium px-3 py-2.5">PPTK</th>
               <th className="font-medium px-3 py-2.5">Pagu ({tahapanLabel(tahapan)})</th>
@@ -97,7 +98,7 @@ export default async function RekeningPage() {
           <tbody>
             {(dpaList ?? []).length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-slate-400 text-sm">
+                <td colSpan={8} className="px-3 py-6 text-center text-slate-400 text-sm">
                   Belum ada rekening di tahapan ini. Tambahkan lewat form di bawah.
                 </td>
               </tr>
@@ -131,7 +132,17 @@ export default async function RekeningPage() {
                     <input
                       name="jenis_belanja"
                       defaultValue={row.rekening?.jenis_belanja}
-                      className="w-40 text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
+                      placeholder="mis. Belanja Honorarium..."
+                      className="w-56 text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      name="kelompok_belanja"
+                      list="kelompok-belanja-opsi"
+                      defaultValue={row.rekening?.kelompok_belanja ?? ""}
+                      placeholder="Belanja Operasi"
+                      className="w-32 text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -185,12 +196,19 @@ export default async function RekeningPage() {
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-200 font-medium">
-              <td className="px-3 py-2.5" colSpan={5}>TOTAL PAGU ({tahapanLabel(tahapan)})</td>
+              <td className="px-3 py-2.5" colSpan={6}>TOTAL PAGU ({tahapanLabel(tahapan)})</td>
               <td className="px-3 py-2.5" colSpan={2}>Rp {formatRupiah(totalPagu)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
+
+      <datalist id="kelompok-belanja-opsi">
+        <option value="Belanja Operasi" />
+        <option value="Belanja Modal" />
+        <option value="Belanja Tidak Terduga" />
+        <option value="Belanja Transfer" />
+      </datalist>
 
       <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-5">
         <p className="text-sm font-medium text-slate-900 mb-3">+ Tambah Rekening &amp; Pagu Baru</p>
@@ -221,11 +239,20 @@ export default async function RekeningPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Belanja</label>
+            <label className="text-xs font-medium text-slate-600 mb-1 block">Uraian Belanja</label>
             <input
               name="jenis_belanja"
               required
               placeholder="mis. Belanja Alat Tulis Kantor"
+              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
+            />
+          </div>
+          <div className="sm:col-span-1">
+            <label className="text-xs font-medium text-slate-600 mb-1 block">Kelompok</label>
+            <input
+              name="kelompok_belanja"
+              list="kelompok-belanja-opsi"
+              placeholder="Belanja Operasi"
               className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
             />
           </div>

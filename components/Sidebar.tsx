@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, Building2, Wallet,
-  ClipboardList, ShieldCheck, FileSpreadsheet, BarChart3, LogOut,
+  ClipboardList, ShieldCheck, FileSpreadsheet, LogOut,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 
@@ -20,7 +20,7 @@ const navGroups = [
     label: "Master Data",
     items: [
       { icon: Wallet, name: "Rekening & Pagu (DPA)", href: "/rekening" },
-      { icon: ShieldCheck, name: "Pejabat SKPD (KPA/PPTK/BPP)", href: "/pejabat" },
+      { icon: ShieldCheck, name: "Manajemen Akun (KPA/PPTK/BPP)", href: "/pejabat" },
       { icon: Building2, name: "Penyedia Barang/Jasa", href: "/penyedia" },
     ],
   },
@@ -28,7 +28,6 @@ const navGroups = [
     label: "Laporan",
     items: [
       { icon: FileSpreadsheet, name: "Rekap Realisasi", href: "/rekap" },
-      { icon: BarChart3, name: "Laporan Realisasi", href: "/laporan" },
     ],
   },
 ];

@@ -62,7 +62,7 @@ export default function AccountMenu({
             onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
           >
-            <Users className="h-4 w-4" /> Manajemen Akun
+            <Users className="h-4 w-4" /> Akses Aplikasi (Login)
           </Link>
           <form action={logout}>
             <button

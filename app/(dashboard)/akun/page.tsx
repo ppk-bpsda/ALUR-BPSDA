@@ -16,10 +16,12 @@ export default async function AkunPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="font-serif text-xl text-slate-900">Manajemen Akun</h1>
+        <h1 className="font-serif text-xl text-slate-900">Akses Aplikasi (Login)</h1>
         <p className="text-sm text-slate-500">
-          Tambah akun lain yang membutuhkan akses untuk proses administrasi. Semua akun
-          punya akses penuh yang sama seperti akun ini.
+          Tambah akun lain yang membutuhkan akses LOGIN ke aplikasi ini untuk proses administrasi.
+          Semua akun punya akses penuh yang sama seperti akun ini. (Ini berbeda dari menu{" "}
+          <span className="font-medium">Manajemen Akun</span> di sidebar, yang berisi data pejabat
+          KPA/PPTK/BPP untuk kebutuhan dokumen SPJ.)
         </p>
       </div>
 

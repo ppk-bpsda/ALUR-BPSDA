@@ -10,6 +10,7 @@ export async function addPejabat(formData: FormData) {
   const nip = String(formData.get("nip"));
   const pangkat = String(formData.get("pangkat") || "") || null;
   const nomor_sk = String(formData.get("nomor_sk") || "") || null;
+  const judul_sk = String(formData.get("judul_sk") || "") || null;
   const tanggal_sk = String(formData.get("tanggal_sk") || "") || null;
   const tahun_anggaran = Number(formData.get("tahun_anggaran"));
 
@@ -19,6 +20,7 @@ export async function addPejabat(formData: FormData) {
     nip,
     pangkat,
     nomor_sk,
+    judul_sk,
     tanggal_sk,
     tahun_anggaran,
     aktif: true,
@@ -35,11 +37,12 @@ export async function updatePejabat(formData: FormData) {
   const nip = String(formData.get("nip"));
   const pangkat = String(formData.get("pangkat") || "") || null;
   const nomor_sk = String(formData.get("nomor_sk") || "") || null;
+  const judul_sk = String(formData.get("judul_sk") || "") || null;
   const tanggal_sk = String(formData.get("tanggal_sk") || "") || null;
 
   const { error } = await supabase
     .from("pejabat_skpd")
-    .update({ nama, nip, pangkat, nomor_sk, tanggal_sk })
+    .update({ nama, nip, pangkat, nomor_sk, judul_sk, tanggal_sk })
     .eq("id", id);
 
   if (error) throw new Error(error.message);
