@@ -11,6 +11,8 @@ export async function addPenyedia(formData: FormData) {
     alamat: String(formData.get("alamat") || ""),
     npwp: String(formData.get("npwp") || ""),
     rekening_bank: String(formData.get("rekening_bank") || ""),
+    bentuk_usaha: String(formData.get("bentuk_usaha") || "badan_usaha"),
+    status_pkp: formData.get("status_pkp") === "on",
     pph_final_umkm: formData.get("pph_final_umkm") === "on",
   };
   const { error } = await supabase.from("penyedia").insert(payload);

@@ -18,10 +18,28 @@ export default async function PenyediaPage() {
 
       <form action={addPenyedia} className="bg-white rounded-xl border border-slate-200 p-5 grid sm:grid-cols-2 gap-4">
         <Field name="nama_penyedia" label="Nama Penyedia" required />
-        <Field name="nama_direktur" label="Nama Direktur" />
+        <Field name="nama_direktur" label="Nama Direktur / Penanggung Jawab" />
         <Field name="alamat" label="Alamat" className="sm:col-span-2" />
         <Field name="npwp" label="NPWP" />
         <Field name="rekening_bank" label="Rekening Bank" />
+        <div>
+          <label className="text-xs font-medium text-slate-600 mb-1.5 block">Bentuk Penyedia</label>
+          <select
+            name="bentuk_usaha"
+            defaultValue="badan_usaha"
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 bg-white"
+          >
+            <option value="badan_usaha">Badan Usaha (PT/CV/Koperasi/dst)</option>
+            <option value="perseorangan">Perseorangan</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" name="status_pkp" id="status_pkp" className="h-4 w-4" />
+          <label htmlFor="status_pkp" className="text-sm text-slate-600">
+            Penyedia berstatus <span className="font-medium">PKP</span> (Pengusaha Kena Pajak) --
+            boleh menerbitkan Faktur Pajak
+          </label>
+        </div>
         <div className="flex items-center gap-2 sm:col-span-2">
           <input type="checkbox" name="pph_final_umkm" id="pph_final_umkm" className="h-4 w-4" />
           <label htmlFor="pph_final_umkm" className="text-sm text-slate-600">
@@ -39,14 +57,14 @@ export default async function PenyediaPage() {
         </div>
       </form>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
               <th className="font-medium px-5 py-2.5">Nama Penyedia</th>
-              <th className="font-medium px-5 py-2.5">Direktur</th>
+              <th className="font-medium px-5 py-2.5">Bentuk</th>
               <th className="font-medium px-5 py-2.5">NPWP</th>
-              <th className="font-medium px-5 py-2.5">Rekening Bank</th>
+              <th className="font-medium px-5 py-2.5">PKP</th>
               <th className="font-medium px-5 py-2.5">PPh Final UMKM</th>
               <th className="font-medium px-5 py-2.5"></th>
             </tr>
@@ -55,9 +73,17 @@ export default async function PenyediaPage() {
             {(list ?? []).map((row: any) => (
               <tr key={row.id} className="border-b border-slate-50 last:border-0">
                 <td className="px-5 py-3 text-slate-700">{row.nama_penyedia}</td>
-                <td className="px-5 py-3 text-slate-500">{row.nama_direktur}</td>
-                <td className="px-5 py-3 text-slate-500">{row.npwp}</td>
-                <td className="px-5 py-3 text-slate-500">{row.rekening_bank}</td>
+                <td className="px-5 py-3 text-slate-500 text-xs">
+                  {row.bentuk_usaha === "perseorangan" ? "Perseorangan" : "Badan Usaha"}
+                </td>
+                <td className="px-5 py-3 text-slate-500">{row.npwp || "--"}</td>
+                <td className="px-5 py-3 text-slate-500">
+                  {row.status_pkp ? (
+                    <span className="text-xs bg-sky-50 text-sky-700 rounded-full px-2 py-0.5">PKP</span>
+                  ) : (
+                    <span className="text-xs bg-slate-100 text-slate-500 rounded-full px-2 py-0.5">Non-PKP</span>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-slate-500">
                   {row.pph_final_umkm ? (
                     <span className="text-xs bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5">Ya</span>

@@ -3,22 +3,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2, Sparkles, Info } from "lucide-react";
 
 type Rincian = { nama_item: string; qty: number; satuan: string; harga_satuan: number };
 type Potongan = { jenis_pajak: string; persentase: number; nominal: number };
 type JenisPengadaan = "barang" | "jasa_umum" | "jasa_boga_hotel";
 
 // ---------------------------------------------------------
-// Tarif pajak pengadaan barang/jasa pemerintah -- berdasarkan aturan umum
-// yang berlaku (UU HPP, PP 23/2018, PMK terkait PPh 22/23). Ini alat
-// bantu hitung, BUKAN nasihat pajak -- Bendahara tetap wajib
-// memverifikasi status PKP/NPWP penyedia dan tarif yang berlaku saat
-// transaksi, karena aturan pajak bisa berubah.
+// Tarif & aturan pemungutan pajak oleh Bendahara Pemerintah dalam
+// pengadaan barang/jasa -- mengacu pada PMK-58/2022 (PPN & PPh 22 yang
+// dipungut Bendahara), UU HPP, dan PP 23/2018 (PPh Final UMKM). Ini alat
+// bantu hitung, BUKAN nasihat pajak final -- Bendahara/PPK tetap wajib
+// memverifikasi status PKP, NPWP, dan ketentuan terbaru sebelum SPJ
+// diajukan, karena aturan pajak bisa berubah dan setiap transaksi punya
+// konteks masing-masing.
+//
+// Poin penting yang dijaga di sini:
+// - PPN HANYA dipungut kalau penyedia berstatus PKP (non-PKP tidak boleh
+//   menerbitkan Faktur Pajak, jadi bukan objek pemungutan PPN sama sekali
+//   -- bukan sekadar 0%).
+// - Batas Rp 2.000.000 (tidak termasuk PPN, per transaksi/nota, tidak
+//   boleh dipecah) berlaku untuk PPN dan PPh 22 (pembelian BARANG).
+// - PPh 23 (JASA) TIDAK punya batas minimum -- dipungut penuh berapapun
+//   nilainya, kecuali jenis jasa yang dikecualikan (mis. jasa katering).
+// - Tarif PPh 22/23 dobel kalau penyedia tidak ber-NPWP.
+// - PPh Final UMKM (PP 23/2018) menggantikan PPh 22/23 (bukan PPN) kalau
+//   penyedia sudah punya Surat Keterangan, dan tidak punya batas minimum.
+// - Pengadaan lewat E-Katalog/E-Purchasing LKPP: metode pengadaannya
+//   beda, tapi aturan pemungutan pajaknya SAMA seperti di atas -- harga
+//   katalog LKPP lazimnya sudah termasuk PPN (netto), jadi asumsi "harga
+//   sudah termasuk PPN" di kalkulator ini tetap berlaku.
 // ---------------------------------------------------------
 const TARIF = {
   ppn: 0.11,
-  batasMinPpnPph22: 2_000_000, // di bawah ini PPN & PPh 22 umumnya tidak dipungut
+  batasMinPpnPph22: 2_000_000,
   pph22: 0.015,
   pph22TanpaNpwp: 0.03,
   pph23: 0.02,
@@ -30,36 +48,65 @@ const TARIF = {
 function hitungPajakOtomatis({
   totalBelanja,
   jenisPengadaan,
+  statusPkp,
   adaNpwp,
   pakaiPphFinal,
 }: {
   totalBelanja: number;
   jenisPengadaan: JenisPengadaan;
+  statusPkp: boolean;
   adaNpwp: boolean;
   pakaiPphFinal: boolean;
-}): Potongan[] {
-  if (totalBelanja <= 0) return [];
+}): { hasil: Potongan[]; catatan: string[] } {
+  if (totalBelanja <= 0) return { hasil: [], catatan: [] };
+  const catatan: string[] = [];
 
-  // Jasa boga/katering & hotel: bukan objek PPh 23 (dikecualikan per
-  // ketentuan), dan biasanya bukan objek PPN tapi Pajak Daerah (PB1) yang
-  // sudah self-assessment oleh restoran/hotel -- jadi cukup ditampilkan
-  // sebagai informasi, tidak dipotong Bendahara.
+  // Jasa boga/katering & hotel: dikecualikan dari objek PPh 23, dan
+  // umumnya bukan objek PPN tapi Pajak Daerah (PB1) yang sudah
+  // self-assessment oleh restoran/hotel -- jadi cukup ditampilkan sebagai
+  // informasi, tidak dipotong Bendahara.
   if (jenisPengadaan === "jasa_boga_hotel") {
     const dppInfo = totalBelanja / (1 + TARIF.pajakDaerahRestoranHotel);
-    return [
-      {
-        jenis_pajak: "Pajak Daerah Restoran/Hotel 10% (informasi -- umumnya sudah termasuk di harga)",
-        persentase: 10,
-        nominal: Math.round(totalBelanja - dppInfo),
-      },
-    ];
+    catatan.push(
+      "Jasa katering/hotel dikecualikan dari objek PPh 23. Pajak Daerah (PB1) di bawah ini murni " +
+        "informasi karena lazimnya sudah self-assessment oleh restoran/hotel dan sudah termasuk di harga struk -- bukan dipungut Bendahara."
+    );
+    return {
+      hasil: [
+        {
+          jenis_pajak: "Pajak Daerah Restoran/Hotel 10% (informasi -- umumnya sudah termasuk di harga)",
+          persentase: 10,
+          nominal: Math.round(totalBelanja - dppInfo),
+        },
+      ],
+      catatan,
+    };
   }
 
-  const dpp = totalBelanja / (1 + TARIF.ppn);
   const hasil: Potongan[] = [];
 
-  if (dpp >= TARIF.batasMinPpnPph22) {
-    hasil.push({ jenis_pajak: "PPN 11%", persentase: 11, nominal: Math.round(totalBelanja - dpp) });
+  // DPP: kalau penyedia PKP, harga diasumsikan sudah termasuk PPN (umum
+  // berlaku termasuk untuk harga di E-Katalog LKPP) sehingga DPP dihitung
+  // dari total dibagi 1,11. Kalau Non-PKP, tidak ada PPN yang terkandung
+  // di harga, jadi DPP = harga penuh.
+  const dpp = statusPkp ? totalBelanja / (1 + TARIF.ppn) : totalBelanja;
+
+  if (!statusPkp) {
+    catatan.push(
+      "Penyedia Non-PKP -- tidak boleh memungut/menerbitkan Faktur Pajak, sehingga transaksi ini " +
+        "bukan objek pemungutan PPN sama sekali (bukan 0%, memang tidak dipungut)."
+    );
+  }
+
+  if (statusPkp) {
+    if (dpp >= TARIF.batasMinPpnPph22) {
+      hasil.push({ jenis_pajak: "PPN 11%", persentase: 11, nominal: Math.round(totalBelanja - dpp) });
+    } else {
+      catatan.push(
+        `Nilai transaksi (DPP Rp${Math.round(dpp).toLocaleString("id-ID")}) di bawah Rp2.000.000 -- ` +
+          "PPN tidak dipungut sesuai PMK-58/2022 Pasal 5, selama tidak dipecah dari transaksi lain."
+      );
+    }
   }
 
   if (pakaiPphFinal) {
@@ -69,6 +116,7 @@ function hitungPajakOtomatis({
       nominal: Math.round(dpp * TARIF.pphFinalUmkm),
     });
   } else if (jenisPengadaan === "barang") {
+    // PPh 22 (barang): batas Rp2jt sama seperti PPN.
     if (dpp >= TARIF.batasMinPpnPph22) {
       const tarif = adaNpwp ? TARIF.pph22 : TARIF.pph22TanpaNpwp;
       hasil.push({
@@ -76,8 +124,15 @@ function hitungPajakOtomatis({
         persentase: tarif * 100,
         nominal: Math.round(dpp * tarif),
       });
+    } else if (statusPkp) {
+      catatan.push("PPh 22 juga tidak dipungut untuk transaksi barang di bawah Rp2.000.000.");
+    } else {
+      catatan.push(
+        `Nilai transaksi (Rp${Math.round(dpp).toLocaleString("id-ID")}) di bawah Rp2.000.000 -- PPh 22 tidak dipungut.`
+      );
     }
   } else {
+    // PPh 23 (jasa): TIDAK ada batas minimum, selalu dipungut penuh.
     const tarif = adaNpwp ? TARIF.pph23 : TARIF.pph23TanpaNpwp;
     hasil.push({
       jenis_pajak: `PPh 23 ${adaNpwp ? "2%" : "4% (tanpa NPWP)"}`,
@@ -86,7 +141,7 @@ function hitungPajakOtomatis({
     });
   }
 
-  return hasil;
+  return { hasil, catatan };
 }
 
 export default function PengajuanForm({
@@ -114,7 +169,9 @@ export default function PengajuanForm({
   const [penerimaDiubahManual, setPenerimaDiubahManual] = useState(false);
   const [rincian, setRincian] = useState<Rincian[]>([{ nama_item: "", qty: 1, satuan: "", harga_satuan: 0 }]);
   const [potongan, setPotongan] = useState<Potongan[]>([]);
+  const [catatanPajak, setCatatanPajak] = useState<string[]>([]);
   const [jenisPengadaan, setJenisPengadaan] = useState<JenisPengadaan>("barang");
+  const [eKatalog, setEKatalog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -122,7 +179,7 @@ export default function PengajuanForm({
     (async () => {
       const { data: penyedia } = await supabase
         .from("penyedia")
-        .select("id, nama_penyedia, nama_direktur, npwp, pph_final_umkm")
+        .select("id, nama_penyedia, nama_direktur, npwp, status_pkp, bentuk_usaha, pph_final_umkm")
         .order("nama_penyedia");
       setPenyediaOptions(penyedia ?? []);
 
@@ -241,13 +298,15 @@ export default function PengajuanForm({
     setPotongan((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
   function handleHitungOtomatis() {
-    const hasil = hitungPajakOtomatis({
+    const { hasil, catatan } = hitungPajakOtomatis({
       totalBelanja,
       jenisPengadaan,
+      statusPkp: Boolean(penyediaTerpilih?.status_pkp),
       adaNpwp: Boolean(penyediaTerpilih?.npwp),
       pakaiPphFinal: Boolean(penyediaTerpilih?.pph_final_umkm),
     });
     setPotongan(hasil);
+    setCatatanPajak(catatan);
   }
 
   async function handleSubmit() {
@@ -382,6 +441,19 @@ export default function PengajuanForm({
                 <option key={p.id} value={p.id}>{p.nama_penyedia}</option>
               ))}
             </select>
+            {penyediaTerpilih && (
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                <span className="text-xs bg-slate-100 text-slate-600 rounded-full px-2 py-0.5">
+                  {penyediaTerpilih.bentuk_usaha === "perseorangan" ? "Perseorangan" : "Badan Usaha"}
+                </span>
+                <span className={`text-xs rounded-full px-2 py-0.5 ${penyediaTerpilih.status_pkp ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500"}`}>
+                  {penyediaTerpilih.status_pkp ? "PKP" : "Non-PKP"}
+                </span>
+                <span className={`text-xs rounded-full px-2 py-0.5 ${penyediaTerpilih.npwp ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"}`}>
+                  {penyediaTerpilih.npwp ? "Ber-NPWP" : "Tanpa NPWP"}
+                </span>
+              </div>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1.5 block">Penerima Uang GU</label>
@@ -465,7 +537,7 @@ export default function PengajuanForm({
           <p className="text-sm font-medium text-slate-900">Potongan Pajak</p>
         </div>
 
-        <div className="flex flex-wrap items-end gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4">
+        <div className="flex flex-wrap items-end gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1 block">Jenis Pengadaan</label>
             <select
@@ -478,6 +550,10 @@ export default function PengajuanForm({
               <option value="jasa_boga_hotel">Jasa Boga/Katering/Hotel</option>
             </select>
           </div>
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 pb-2">
+            <input type="checkbox" checked={eKatalog} onChange={(e) => setEKatalog(e.target.checked)} className="h-3.5 w-3.5" />
+            Lewat E-Katalog/E-Purchasing LKPP
+          </label>
           <button
             type="button"
             onClick={handleHitungOtomatis}
@@ -486,11 +562,33 @@ export default function PengajuanForm({
             <Sparkles className="h-3.5 w-3.5" /> Hitung Otomatis
           </button>
           <p className="text-xs text-slate-400 flex-1 min-w-[220px]">
-            Berdasarkan tarif umum saat ini (PPN 11%, PPh 22/23, PPh Final UMKM 0,5% bila Penyedia
-            bertanda PP 23) dan status NPWP Penyedia yang dipilih. Alat bantu hitung, bukan nasihat
-            pajak -- Bendahara tetap wajib memverifikasi sebelum SPJ diajukan.
+            Mengikuti PMK-58/2022 (PPN &amp; PPh 22 dipungut Bendahara), status PKP/NPWP Penyedia di
+            atas, dan PPh Final UMKM bila ditandai di data Penyedia. Alat bantu hitung, bukan nasihat
+            pajak final -- Bendahara/PPK tetap wajib memverifikasi sebelum SPJ diajukan.
           </p>
         </div>
+
+        {eKatalog && (
+          <div className="flex items-start gap-2 text-xs text-sky-800 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 mb-3">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <p>
+              Pengadaan lewat E-Katalog/E-Purchasing LKPP: metode pengadaannya beda, tapi aturan
+              pemungutan pajak tetap sama seperti di atas. Harga di katalog LKPP lazimnya sudah netto
+              (termasuk PPN), sesuai asumsi kalkulator ini.
+            </p>
+          </div>
+        )}
+
+        {catatanPajak.length > 0 && (
+          <div className="space-y-1.5 mb-3">
+            {catatanPajak.map((c, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <p>{c}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-2">
           {potongan.length === 0 && (
