@@ -125,3 +125,102 @@ export async function deleteRekening(formData: FormData) {
 
   revalidatePath("/rekening");
 }
+
+// ---------------------------------------------------------
+// TAMBAH KEGIATAN BARU -- dipakai kalau kegiatan yang dibutuhkan belum
+// ada di daftar (jarang terjadi, biasanya cuma Sub Kegiatan/Rekening
+// yang berubah antar tahapan). Program dipilih dari yang sudah ada.
+// ---------------------------------------------------------
+export async function addKegiatan(formData: FormData) {
+  const { tahun } = getPeriode();
+  const supabase = createClient();
+
+  const program_id = String(formData.get("program_id") || "");
+  const kode_kegiatan = String(formData.get("kode_kegiatan") || "").trim();
+  const nama_kegiatan = String(formData.get("nama_kegiatan") || "").trim();
+
+  if (!program_id || !kode_kegiatan || !nama_kegiatan) {
+    throw new Error("Program, Kode Kegiatan, dan Nama Kegiatan wajib diisi.");
+  }
+
+  const { error } = await supabase
+    .from("kegiatan")
+    .upsert(
+      { program_id, kode_kegiatan, nama_kegiatan, tahun_anggaran: tahun },
+      { onConflict: "kode_kegiatan,tahun_anggaran" }
+    );
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/rekening");
+}
+
+// ---------------------------------------------------------
+// TAMBAH SUB KEGIATAN BARU -- dipakai saat penyusunan tahapan baru
+// (mis. Perubahan) butuh sub kegiatan yang belum ada di file lampiran.
+// ---------------------------------------------------------
+export async function addSubKegiatan(formData: FormData) {
+  const { tahun } = getPeriode();
+  const supabase = createClient();
+
+  const kegiatan_id = String(formData.get("kegiatan_id") || "");
+  const kode_sub_kegiatan = String(formData.get("kode_sub_kegiatan") || "").trim();
+  const nama_sub_kegiatan = String(formData.get("nama_sub_kegiatan") || "").trim();
+
+  if (!kegiatan_id || !kode_sub_kegiatan || !nama_sub_kegiatan) {
+    throw new Error("Kegiatan, Kode Sub Kegiatan, dan Nama Sub Kegiatan wajib diisi.");
+  }
+
+  const { error } = await supabase
+    .from("sub_kegiatan")
+    .upsert(
+      { kegiatan_id, kode_sub_kegiatan, nama_sub_kegiatan, tahun_anggaran: tahun },
+      { onConflict: "kode_sub_kegiatan,tahun_anggaran" }
+    );
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/rekening");
+}
+
+// ---------------------------------------------------------
+// SALIN DARI TAHAPAN LAIN -- untuk mulai penyusunan tahapan baru (mis.
+// "Perubahan") dari baseline tahapan sebelumnya (mis. "Pergeseran").
+// Hanya MENAMBAHKAN rekening yang belum punya pagu di tahapan aktif --
+// tidak menimpa baris yang sudah sempat diedit manual di tahapan aktif,
+// supaya aman dijalankan berkali-kali tanpa merusak penyesuaian yang
+// sudah dilakukan.
+// ---------------------------------------------------------
+export async function salinDariTahapan(formData: FormData) {
+  const { tahun, tahapan } = getPeriode();
+  const supabase = createClient();
+  const dariTahapan = String(formData.get("dari_tahapan") || "");
+  if (!dariTahapan || dariTahapan === tahapan) {
+    throw new Error("Pilih tahapan sumber yang berbeda dari tahapan aktif.");
+  }
+
+  const [{ data: sumber }, { data: sudahAda }] = await Promise.all([
+    supabase
+      .from("dpa")
+      .select("rekening_id, pagu_anggaran, pptk_id")
+      .eq("tahun_anggaran", tahun)
+      .eq("tahapan", dariTahapan),
+    supabase.from("dpa").select("rekening_id").eq("tahun_anggaran", tahun).eq("tahapan", tahapan),
+  ]);
+
+  const sudahAdaSet = new Set((sudahAda ?? []).map((r: any) => r.rekening_id));
+  const baruDitambahkan = (sumber ?? []).filter((r: any) => !sudahAdaSet.has(r.rekening_id));
+
+  if (baruDitambahkan.length > 0) {
+    const { error } = await supabase.from("dpa").insert(
+      baruDitambahkan.map((r: any) => ({
+        rekening_id: r.rekening_id,
+        tahun_anggaran: tahun,
+        tahapan,
+        pagu_anggaran: r.pagu_anggaran,
+        pptk_id: r.pptk_id,
+      }))
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/rekening");
+}

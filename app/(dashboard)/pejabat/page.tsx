@@ -13,29 +13,25 @@ export default async function PejabatPage() {
   const { tahun } = getPeriode();
   const supabase = createClient();
 
-  const [{ data: pejabat }, { data: subKegiatan }] = await Promise.all([
-    supabase
-      .from("pejabat_skpd")
-      .select("*, sub_kegiatan:sub_kegiatan_id(kode_sub_kegiatan, nama_sub_kegiatan)")
-      .eq("tahun_anggaran", tahun)
-      .order("jabatan"),
-    supabase
-      .from("sub_kegiatan")
-      .select("id, kode_sub_kegiatan, nama_sub_kegiatan")
-      .eq("tahun_anggaran", tahun)
-      .order("kode_sub_kegiatan"),
-  ]);
+  const { data: pejabat } = await supabase
+    .from("pejabat_skpd")
+    .select("id, jabatan, nama, nip, pangkat, nomor_sk, tanggal_sk")
+    .eq("tahun_anggaran", tahun)
+    .order("jabatan")
+    .order("nama");
 
   const groups: Record<string, any[]> = { KPA: [], PPTK: [], BENDAHARA_PENGELUARAN_PEMBANTU: [] };
   (pejabat ?? []).forEach((p: any) => groups[p.jabatan]?.push(p));
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-5xl">
       <div>
         <h1 className="font-serif text-xl text-slate-900">Pejabat SKPD</h1>
         <p className="text-sm text-slate-500">
-          Data KPA, PPTK, dan Bendahara Pengeluaran Pembantu untuk Tahun Anggaran {tahun}.
-          Dipakai otomatis mengisi Nota Dinas, SPP/SPTJB, dan Kwitansi GU.
+          Data pegawai KPA, PPTK, dan Bendahara Pengeluaran Pembantu untuk Tahun Anggaran {tahun}. Dipakai
+          otomatis mengisi Nota Dinas, SPP/SPTJB, dan Kwitansi GU. Khusus PPTK: pegawai mana yang bertanggung
+          jawab atas rekening tertentu diatur di menu <span className="font-medium">Rekening &amp; Pagu (DPA)</span>,
+          bukan di sini -- di sini cukup daftar pegawainya saja.
         </p>
       </div>
 
@@ -51,11 +47,7 @@ export default async function PejabatPage() {
               <p className="px-5 py-4 text-sm text-slate-400">Belum ada data.</p>
             )}
             {groups[jabatan].map((row: any) => (
-              <form
-                key={row.id}
-                action={updatePejabat}
-                className="p-4 grid sm:grid-cols-12 gap-3 items-end"
-              >
+              <form key={row.id} action={updatePejabat} className="p-4 grid sm:grid-cols-12 gap-3 items-end">
                 <input type="hidden" name="id" value={row.id} />
                 <div className="sm:col-span-3">
                   <label className="text-xs font-medium text-slate-600 mb-1 block">Nama</label>
@@ -75,22 +67,15 @@ export default async function PejabatPage() {
                     className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
                   />
                 </div>
-                {jabatan === "PPTK" && (
-                  <div className="sm:col-span-3">
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Sub Kegiatan</label>
-                    <select
-                      name="sub_kegiatan_id"
-                      defaultValue={row.sub_kegiatan_id ?? ""}
-                      required
-                      className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
-                    >
-                      <option value="" disabled>Pilih sub kegiatan</option>
-                      {(subKegiatan ?? []).map((sk: any) => (
-                        <option key={sk.id} value={sk.id}>{sk.nama_sub_kegiatan}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Pangkat</label>
+                  <input
+                    name="pangkat"
+                    defaultValue={row.pangkat ?? ""}
+                    placeholder="mis. Penata Tk. I"
+                    className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
+                  />
+                </div>
                 <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-slate-600 mb-1 block">Nomor SK</label>
                   <input
@@ -99,7 +84,7 @@ export default async function PejabatPage() {
                     className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
                   />
                 </div>
-                <div className={jabatan === "PPTK" ? "sm:col-span-1" : "sm:col-span-3"}>
+                <div className="sm:col-span-2">
                   <label className="text-xs font-medium text-slate-600 mb-1 block">Tanggal SK</label>
                   <input
                     type="date"
@@ -108,10 +93,10 @@ export default async function PejabatPage() {
                     className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200"
                   />
                 </div>
-                <div className="sm:col-span-1 flex gap-1.5">
+                <div className="sm:col-span-1">
                   <button
                     type="submit"
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg px-2 py-2"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg px-2 py-2"
                   >
                     Simpan
                   </button>
@@ -140,7 +125,7 @@ export default async function PejabatPage() {
               <input
                 name="nama"
                 required
-                placeholder="Nama pejabat"
+                placeholder="Nama pegawai"
                 className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
               />
             </div>
@@ -152,22 +137,14 @@ export default async function PejabatPage() {
                 className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
               />
             </div>
-            {jabatan === "PPTK" && (
-              <div className="sm:col-span-3">
-                <label className="text-xs font-medium text-slate-600 mb-1 block">Sub Kegiatan</label>
-                <select
-                  name="sub_kegiatan_id"
-                  required
-                  defaultValue=""
-                  className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
-                >
-                  <option value="" disabled>Pilih sub kegiatan</option>
-                  {(subKegiatan ?? []).map((sk: any) => (
-                    <option key={sk.id} value={sk.id}>{sk.nama_sub_kegiatan}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="sm:col-span-2">
+              <label className="text-xs font-medium text-slate-600 mb-1 block">Pangkat</label>
+              <input
+                name="pangkat"
+                placeholder="mis. Penata Tk. I"
+                className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
+              />
+            </div>
             <div className="sm:col-span-2">
               <label className="text-xs font-medium text-slate-600 mb-1 block">Nomor SK</label>
               <input
@@ -175,7 +152,7 @@ export default async function PejabatPage() {
                 className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-emerald-200 bg-white"
               />
             </div>
-            <div className={jabatan === "PPTK" ? "sm:col-span-1" : "sm:col-span-3"}>
+            <div className="sm:col-span-2">
               <label className="text-xs font-medium text-slate-600 mb-1 block">Tanggal SK</label>
               <input
                 type="date"

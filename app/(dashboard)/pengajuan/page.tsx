@@ -4,6 +4,7 @@ import { getPeriode, tahapanLabel } from "@/lib/periode";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import GenerateButtons from "./GenerateButtons";
+import RowActions from "./RowActions";
 
 export default async function PengajuanPage() {
   const { tahun, tahapan } = getPeriode();
@@ -44,12 +45,13 @@ export default async function PengajuanPage() {
               <th className="font-medium px-4 py-2.5">Jumlah</th>
               <th className="font-medium px-4 py-2.5">Status</th>
               <th className="font-medium px-4 py-2.5">Dokumen</th>
+              <th className="font-medium px-4 py-2.5">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {(list ?? []).length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-400 text-sm">
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-400 text-sm">
                   Belum ada pengajuan.
                 </td>
               </tr>
@@ -65,6 +67,9 @@ export default async function PengajuanPage() {
                 <td className="px-4 py-3 text-xs text-slate-500">{row.status}</td>
                 <td className="px-4 py-3">
                   <GenerateButtons pengajuanId={row.id} />
+                </td>
+                <td className="px-4 py-3">
+                  <RowActions pengajuanId={row.id} />
                 </td>
               </tr>
             ))}
