@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { addPenyedia, deletePenyedia } from "./actions";
-import { Trash2 } from "lucide-react";
+import { addPenyedia } from "./actions";
+import PenyediaRow from "./PenyediaRow";
 
 export default async function PenyediaPage() {
   const supabase = createClient();
@@ -66,40 +66,12 @@ export default async function PenyediaPage() {
               <th className="font-medium px-5 py-2.5">NPWP</th>
               <th className="font-medium px-5 py-2.5">PKP</th>
               <th className="font-medium px-5 py-2.5">PPh Final UMKM</th>
-              <th className="font-medium px-5 py-2.5"></th>
+              <th className="font-medium px-5 py-2.5 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {(list ?? []).map((row: any) => (
-              <tr key={row.id} className="border-b border-slate-50 last:border-0">
-                <td className="px-5 py-3 text-slate-700">{row.nama_penyedia}</td>
-                <td className="px-5 py-3 text-slate-500 text-xs">
-                  {row.bentuk_usaha === "perseorangan" ? "Perseorangan" : "Badan Usaha"}
-                </td>
-                <td className="px-5 py-3 text-slate-500">{row.npwp || "--"}</td>
-                <td className="px-5 py-3 text-slate-500">
-                  {row.status_pkp ? (
-                    <span className="text-xs bg-sky-50 text-sky-700 rounded-full px-2 py-0.5">PKP</span>
-                  ) : (
-                    <span className="text-xs bg-slate-100 text-slate-500 rounded-full px-2 py-0.5">Non-PKP</span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-slate-500">
-                  {row.pph_final_umkm ? (
-                    <span className="text-xs bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5">Ya</span>
-                  ) : (
-                    <span className="text-xs text-slate-400">--</span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <form action={deletePenyedia}>
-                    <input type="hidden" name="id" value={row.id} />
-                    <button type="submit" className="text-rose-500 hover:text-rose-700">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </form>
-                </td>
-              </tr>
+              <PenyediaRow key={row.id} row={row} />
             ))}
           </tbody>
         </table>
