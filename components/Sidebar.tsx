@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, Building2, Wallet,
-  ClipboardList, ShieldCheck, FileSpreadsheet, LogOut,
+  ClipboardList, ShieldCheck, FileSpreadsheet, Settings, LogOut,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 
@@ -29,6 +29,10 @@ const navGroups = [
     items: [
       { icon: FileSpreadsheet, name: "Rekap Realisasi", href: "/rekap" },
     ],
+  },
+  {
+    label: "Lainnya",
+    items: [{ icon: Settings, name: "Pengaturan Aplikasi", href: "/pengaturan" }],
   },
 ];
 

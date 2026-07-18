@@ -2,26 +2,27 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { terbilang, formatRupiah } from "@/lib/terbilang";
 import { formatTanggalSurat, formatHariTanggal } from "@/lib/format";
 
-// Nama SKPD resmi -- dipakai di semua dokumen (Nota Dinas, SPP/SPTJB,
-// Kwitansi GU). Cek juga environment variable NEXT_PUBLIC_NAMA_SKPD di
-// Vercel project settings -- kalau di-set di sana, nilainya akan
-// menimpa default ini.
-const NAMA_SKPD_SATU_BARIS =
-  process.env.NEXT_PUBLIC_NAMA_SKPD ||
-  "Bagian Perekonomian dan Sumber Daya Alam Sekretariat Daerah Kota Batu";
-
-// Versi 2 baris (dipisah "\n") khusus untuk field SKPD di Kwitansi GU,
-// supaya tersusun rata kiri dalam 2 baris sesuai format yang diminta.
-const NAMA_SKPD_DUA_BARIS =
-  process.env.NEXT_PUBLIC_NAMA_SKPD_BARIS1 && process.env.NEXT_PUBLIC_NAMA_SKPD_BARIS2
-    ? `${process.env.NEXT_PUBLIC_NAMA_SKPD_BARIS1}\n${process.env.NEXT_PUBLIC_NAMA_SKPD_BARIS2}`
-    : "Bagian Perekonomian dan Sumber Daya Alam\nSekretariat Daerah Kota Batu";
-
 export type DokumenData = Awaited<ReturnType<typeof buildDokumenData>>;
 
 export async function buildDokumenData(pengajuanId: string) {
   // Pakai service_role di server -- tidak terikat sesi/cookie user, aman dipanggil dari route/page manapun.
   const supabase = createServiceClient();
+
+  // Nama SKPD -- SATU sumber kebenaran untuk ketiga dokumen (Nota Dinas,
+  // SPP/SPTJB, Kwitansi GU), dibaca dari menu Pengaturan Aplikasi supaya
+  // bisa diubah langsung dari aplikasi (edit/simpan) tanpa perlu ubah
+  // environment variable atau redeploy. Kalau baris pengaturannya belum
+  // ada (mis. migrasi belum dijalankan), pakai default di bawah supaya
+  // dokumen tetap bisa dibuat.
+  const { data: pengaturan } = await supabase
+    .from("pengaturan_aplikasi")
+    .select("nama_skpd_baris1, nama_skpd_baris2")
+    .eq("id", 1)
+    .maybeSingle();
+  const baris1 = pengaturan?.nama_skpd_baris1 || "Bagian Perekonomian dan Sumber Daya Alam";
+  const baris2 = pengaturan?.nama_skpd_baris2 || "Sekretariat Daerah Kota Batu";
+  const NAMA_SKPD_SATU_BARIS = `${baris1} ${baris2}`;
+  const NAMA_SKPD_DUA_BARIS = `${baris1}\n${baris2}`;
 
   const { data: pengajuan, error } = await supabase
     .from("pengajuan_belanja")
