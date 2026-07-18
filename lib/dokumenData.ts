@@ -99,7 +99,11 @@ export async function buildDokumenData(pengajuanId: string) {
   const program = kegiatan?.program;
   const pptk = dpa?.pptk;
 
-  const kodeRekeningLengkap = `${subKeg?.kode_sub_kegiatan}.${rekening?.kode_rekening}`;
+  // kode_rekening yang tersimpan di database SUDAH LENGKAP (sudah termasuk
+  // prefix kode sub kegiatan di depannya, persis format kolom KODE_REKENING
+  // di file lampiran DPA) -- jangan digabung lagi dengan kode_sub_kegiatan,
+  // nanti dobel (bug yang sempat terjadi: "4.01.01.2.06.0002.4.01.01.2.06.0002...").
+  const kodeRekeningLengkap = rekening?.kode_rekening || "";
 
   const rincian = (rincianRows ?? []).map((r: any) => ({
     nama_item: r.nama_item,
