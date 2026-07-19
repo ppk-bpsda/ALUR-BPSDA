@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SPJ Sekretariat Daerah - Kota Batu",
-  description: "Aplikasi pendamping penyusunan SPJ",
+  title: "ALUR-BPSDA | SPJ Sekretariat Daerah - Kota Batu",
+  description: "Aplikasi Layanan Urusan Realisasi -- pendamping penyusunan SPJ",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

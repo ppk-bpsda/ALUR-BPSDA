@@ -293,7 +293,7 @@ export default async function RekeningPage() {
           <div className="sm:col-span-1">
             <button
               type="submit"
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg px-3 py-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-lg px-3 py-2"
             >
               + Tambah
             </button>
@@ -349,7 +349,7 @@ export default async function RekeningPage() {
               </div>
               <button
                 type="submit"
-                className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg px-3 py-2"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-lg px-3 py-2"
               >
                 + Tambah Sub Kegiatan
               </button>

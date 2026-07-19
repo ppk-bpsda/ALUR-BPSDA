@@ -557,7 +557,7 @@ export default function PengajuanForm({
           <button
             type="button"
             onClick={handleHitungOtomatis}
-            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg px-3 py-2"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-medium rounded-lg px-3 py-2"
           >
             <Sparkles className="h-3.5 w-3.5" /> Hitung Otomatis
           </button>

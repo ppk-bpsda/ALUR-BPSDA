@@ -34,7 +34,7 @@ export default function AccountMenu({
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-slate-100 transition-colors"
       >
-        <div className="h-8 w-8 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center font-medium shrink-0">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-emerald-600 text-white text-xs flex items-center justify-center font-medium shrink-0">
           {initials}
         </div>
         <span className="text-sm text-slate-600 hidden sm:block">{displayName}</span>

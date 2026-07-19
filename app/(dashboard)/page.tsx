@@ -146,15 +146,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Pagu" value={`Rp ${formatRupiah(totalPagu)}`} icon={Wallet} />
+        <StatCard label="Total Pagu" value={`Rp ${formatRupiah(totalPagu)}`} icon={Wallet} color="blue" />
         <StatCard
           label="Total Realisasi"
           value={`Rp ${formatRupiah(totalRealisasi)}`}
           delta={totalPagu ? `${((totalRealisasi / totalPagu) * 100).toFixed(1)}% dari pagu` : "-"}
           icon={Receipt}
+          color="emerald"
         />
-        <StatCard label="Sisa Anggaran" value={`Rp ${formatRupiah(totalSisa)}`} icon={FileSpreadsheet} />
-        <StatCard label="Pengajuan Bulan Ini" value={String(pengajuanBulanIni ?? 0)} icon={ClipboardList} />
+        <StatCard label="Sisa Anggaran" value={`Rp ${formatRupiah(totalSisa)}`} icon={FileSpreadsheet} color="cyan" />
+        <StatCard label="Pengajuan Bulan Ini" value={String(pengajuanBulanIni ?? 0)} icon={ClipboardList} color="amber" />
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -278,16 +279,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 }
 
 function StatCard({
-  label, value, delta, icon: Icon,
+  label, value, delta, icon: Icon, color = "blue",
 }: {
-  label: string; value: string; delta?: string; icon: any;
+  label: string; value: string; delta?: string; icon: any; color?: "blue" | "emerald" | "cyan" | "amber";
 }) {
+  const colorMap = {
+    blue: "bg-blue-50 text-blue-600",
+    emerald: "bg-emerald-50 text-emerald-600",
+    cyan: "bg-cyan-50 text-cyan-600",
+    amber: "bg-amber-50 text-amber-600",
+  };
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <div className="flex items-start justify-between">
         <p className="text-xs text-slate-500">{label}</p>
-        <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-          <Icon className="h-4 w-4 text-slate-900" strokeWidth={1.75} />
+        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
         </div>
       </div>
       <p className="mt-3 font-serif text-2xl text-slate-900">{value}</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, Building2, Wallet,
@@ -39,20 +40,22 @@ const navGroups = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0 min-h-screen">
-      <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-800">
-        <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center ring-2 ring-amber-400 shrink-0">
-          <ShieldCheck className="h-4 w-4 text-white" />
+    <aside className="w-64 bg-gradient-to-b from-blue-950 to-slate-950 text-white flex flex-col shrink-0 min-h-screen">
+      <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10">
+        <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center shrink-0 overflow-hidden">
+          <Image src="/logo-mark.png" alt="ALUR-BPSDA" width={36} height={36} className="object-cover" />
         </div>
         <div className="leading-tight">
-          <p className="text-xs tracking-widest text-amber-400">KOTA BATU</p>
-          <p className="text-xs text-slate-300 font-serif">SPJ Sekretariat Daerah</p>
+          <p className="text-xs tracking-widest bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-transparent font-semibold">
+            ALUR-BPSDA
+          </p>
+          <p className="text-xs text-blue-200/70 font-serif">SPJ Sekretariat Daerah</p>
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
         {navGroups.map((group) => (
           <div key={group.label}>
-            <p className="px-2 mb-2 text-xs tracking-widest text-slate-500 font-medium">
+            <p className="px-2 mb-2 text-xs tracking-widest text-blue-300/50 font-medium">
               {group.label.toUpperCase()}
             </p>
             <div className="space-y-0.5">
@@ -62,8 +65,10 @@ export default function Sidebar() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
-                      active ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all ${
+                      active
+                        ? "bg-gradient-to-r from-blue-600/90 to-emerald-600/80 text-white shadow-md shadow-blue-900/40"
+                        : "text-blue-100/60 hover:bg-white/5 hover:text-white"
                     }`}
                   >
                     <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
@@ -75,11 +80,11 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
-      <div className="p-3 border-t border-slate-800">
+      <div className="p-3 border-t border-white/10">
         <form action={logout}>
           <button
             type="submit"
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-blue-100/60 hover:bg-white/5 hover:text-white"
           >
             <LogOut className="h-4 w-4" /> Keluar
           </button>

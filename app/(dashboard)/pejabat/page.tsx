@@ -194,7 +194,7 @@ export default async function PejabatPage() {
             <div className="sm:col-span-3">
               <button
                 type="submit"
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg px-2 py-2"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-medium rounded-lg px-2 py-2"
               >
                 + Tambah
               </button>
