@@ -39,7 +39,7 @@ const navGroups = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="w-64 bg-gradient-to-b from-blue-950 to-slate-950 text-white flex flex-col shrink-0 min-h-screen">
+    <aside className="w-64 bg-gradient-to-b from-blue-950 to-slate-950 text-white flex flex-col shrink-0 h-full overflow-y-auto">
       <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10">
         <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center shrink-0 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
