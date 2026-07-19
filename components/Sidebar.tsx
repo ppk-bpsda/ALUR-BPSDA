@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FileText, Building2, Wallet,
@@ -43,7 +42,8 @@ export default function Sidebar() {
     <aside className="w-64 bg-gradient-to-b from-blue-950 to-slate-950 text-white flex flex-col shrink-0 min-h-screen">
       <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10">
         <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center shrink-0 overflow-hidden">
-          <Image src="/logo-mark.png" alt="ALUR-BPSDA" width={36} height={36} className="object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.png" alt="ALUR-BPSDA" width={36} height={36} className="object-cover" />
         </div>
         <div className="leading-tight">
           <p className="text-xs tracking-widest bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-transparent font-semibold">

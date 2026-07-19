@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { login } from "./actions";
 import { User, Lock, ChevronRight, CalendarRange, Layers, Droplets } from "lucide-react";
 import { TAHUN_OPTIONS, TAHAPAN_OPTIONS } from "@/lib/periode";
@@ -22,7 +21,8 @@ export default function LoginPage({
 
           <div className="relative">
             <div className="bg-white rounded-2xl p-3 w-fit shadow-lg">
-              <Image src="/logo.png" alt="ALUR-BPSDA" width={132} height={132} className="rounded-lg" priority />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="ALUR-BPSDA" width={132} height={132} className="rounded-lg" />
             </div>
 
             <h1 className="mt-10 font-serif text-3xl leading-tight text-white">
