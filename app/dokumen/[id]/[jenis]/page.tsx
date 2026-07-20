@@ -49,11 +49,28 @@ export default async function DokumenPreviewPage({
 }
 
 // ---------------------------------------------------------
+// KOP SURAT -- hanya dipakai di Nota Dinas & SPP/SPTJB.
+// Kuitansi GU sengaja TIDAK memakai kop surat (mengikuti format
+// Template_Kwitansi_GU.docx yang juga tanpa kop surat).
+// ---------------------------------------------------------
+function KopSurat() {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/assets/kop-surat.png"
+      alt="Kop Surat"
+      className="w-full h-auto mb-4"
+    />
+  );
+}
+
+// ---------------------------------------------------------
 // NOTA DINAS
 // ---------------------------------------------------------
 function NotaDinas({ d }: { d: any }) {
   return (
     <div>
+      <KopSurat />
       <h1 className="text-center font-bold text-base underline mb-6">NOTA DINAS</h1>
 
       <table className="w-full mb-4">
@@ -145,6 +162,7 @@ function NotaDinas({ d }: { d: any }) {
 function SppSptjb({ d }: { d: any }) {
   return (
     <div>
+      <KopSurat />
       <h1 className="text-center font-bold text-base underline mb-6">SURAT PERNYATAAN TANGGUNG JAWAB BELANJA</h1>
 
       <table className="mb-4">
