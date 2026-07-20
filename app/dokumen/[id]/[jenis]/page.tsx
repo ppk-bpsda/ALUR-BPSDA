@@ -49,17 +49,20 @@ export default async function DokumenPreviewPage({
 }
 
 // ---------------------------------------------------------
-// KOP SURAT -- hanya dipakai di Nota Dinas & SPP/SPTJB.
-// Kuitansi GU sengaja TIDAK memakai kop surat (mengikuti format
-// Template_Kwitansi_GU.docx yang juga tanpa kop surat).
+// KOP SURAT -- HANYA dipakai di Nota Dinas & SPP/SPTJB.
+// Kuitansi GU sengaja TIDAK memakai kop surat.
+// Diletakkan sebagai elemen PALING ATAS (sebelum judul dokumen)
+// di dalam div.doc-sheet, supaya posisinya identik dengan kop
+// surat yang ada di baris pertama Template_Nota_Dinas.docx /
+// Template_SPP_SPTJB.docx.
 // ---------------------------------------------------------
 function KopSurat() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src="/assets/kop-surat.png"
-      alt="Kop Surat"
-      className="w-full h-auto mb-4"
+      alt="Kop Surat Pemerintah Kota Batu"
+      className="block w-full h-auto mb-4"
     />
   );
 }
