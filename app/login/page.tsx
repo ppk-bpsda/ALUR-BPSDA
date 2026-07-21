@@ -31,8 +31,9 @@ export default function LoginPage({
               Penyusunan SPJ
             </h1>
             <p className="mt-4 text-sm text-blue-100/80 leading-relaxed max-w-xs">
-              Satu tempat untuk mengelola pagu anggaran, menyusun Nota Dinas, SPP/SPTJB,
-              dan Kwitansi GU secara konsisten dan tercatat rapi.
+              Aplikasi Layanan Urusan Realisasi untuk mengelola pagu anggaran, realisasi belanja, 
+              menyusun Nota Dinas, SPP/SPTJB, dan Kwitansi dengan metode pembayaran GU dan LS 
+              secara konsisten dan tercatat rapi.
             </p>
           </div>
 
