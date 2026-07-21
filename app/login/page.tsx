@@ -26,9 +26,9 @@ export default function LoginPage({
             </div>
 
             <h1 className="mt-10 font-serif text-3xl leading-tight text-white">
-              Sistem Administrasi
+              Aplikasi Layanan
               <br />
-              Penyusunan SPJ
+              Urusan Realisasi Belanja (SPJ)
             </h1>
             <p className="mt-4 text-sm text-blue-100/80 leading-relaxed max-w-xs">
               Aplikasi Layanan Urusan Realisasi untuk mengelola pagu anggaran, realisasi belanja, 
