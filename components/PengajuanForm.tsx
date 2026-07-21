@@ -226,7 +226,7 @@ export default function PengajuanForm({
           const { data: dpa } = await supabase
             .from("dpa")
             .select(
-              "id, tahapan, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(nama_sub_kegiatan))"
+              "id, tahapan, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
             )
             .eq("tahun_anggaran", dpaPeriode?.tahun_anggaran)
             .eq("tahapan", dpaPeriode?.tahapan);
@@ -249,7 +249,7 @@ export default function PengajuanForm({
         const { data: dpa } = await supabase
           .from("dpa")
           .select(
-            "id, tahapan, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(nama_sub_kegiatan))"
+            "id, tahapan, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
           )
           .eq("tahun_anggaran", periodeRes.tahun)
           .eq("tahapan", periodeRes.tahapan);
@@ -382,6 +382,9 @@ export default function PengajuanForm({
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <p className="text-[11px] text-slate-400 uppercase tracking-wide -mb-1">
+          Pilih rekening, lalu isi field di bawah ini secara manual
+        </p>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1.5 block">Rekening / DPA</label>
@@ -450,13 +453,26 @@ export default function PengajuanForm({
         </div>
 
         {dpaTerpilih && (
-          <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-600 grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
-            <p><span className="text-slate-400">Sub Kegiatan:</span> {dpaTerpilih.rekening?.sub_kegiatan?.nama_sub_kegiatan || "-"}</p>
-            <p><span className="text-slate-400">Sumber Dana:</span> {dpaTerpilih.rekening?.sumber_dana || "-"}</p>
-            <p><span className="text-slate-400">PPTK:</span> {dpaTerpilih.pptk?.nama || "-- belum ditentukan di Rekening & Pagu --"}</p>
-            <p><span className="text-slate-400">Pagu:</span> Rp {Number(dpaTerpilih.pagu_anggaran || 0).toLocaleString("id-ID")}</p>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-600 space-y-1.5">
+            <p className="text-[11px] text-slate-400 uppercase tracking-wide">Data berikut otomatis dari Rekening &amp; Pagu (database) -- bukan isian manual</p>
+            <p>
+              <span className="text-slate-400">Program:</span>{" "}
+              {dpaTerpilih.rekening?.sub_kegiatan?.kegiatan?.program?.nama_program || "-"}
+            </p>
+            <p>
+              <span className="text-slate-400">Kegiatan:</span>{" "}
+              {dpaTerpilih.rekening?.sub_kegiatan?.kegiatan?.nama_kegiatan || "-"}
+            </p>
+            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
+              <p><span className="text-slate-400">Sub Kegiatan:</span> {dpaTerpilih.rekening?.sub_kegiatan?.nama_sub_kegiatan || "-"}</p>
+              <p><span className="text-slate-400">Kode Rekening:</span> {dpaTerpilih.rekening?.kode_rekening || "-"}</p>
+              <p><span className="text-slate-400">Jenis Belanja:</span> {dpaTerpilih.rekening?.kelompok_belanja || "-"}</p>
+              <p><span className="text-slate-400">Sumber Dana:</span> {dpaTerpilih.rekening?.sumber_dana || "-"}</p>
+              <p><span className="text-slate-400">PPTK:</span> {dpaTerpilih.pptk?.nama || "-- belum ditentukan di Rekening & Pagu --"}</p>
+              <p><span className="text-slate-400">Pagu:</span> Rp {Number(dpaTerpilih.pagu_anggaran || 0).toLocaleString("id-ID")}</p>
+            </div>
             {sisaAnggaran !== null && (
-              <p className="sm:col-span-2">
+              <p>
                 <span className="text-slate-400">Sisa Anggaran (setelah pengajuan ini):</span>{" "}
                 <span className={sisaAnggaran - totalBelanja < 0 ? "text-rose-600 font-medium" : "text-emerald-700 font-medium"}>
                   Rp {(sisaAnggaran - totalBelanja).toLocaleString("id-ID")}

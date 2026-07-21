@@ -26,14 +26,13 @@ export default function LoginPage({
             </div>
 
             <h1 className="mt-10 font-serif text-3xl leading-tight text-white">
-              Aplikasi Layanan
+              Sistem Administrasi
               <br />
-              Urusan Realisasi Belanja (SPJ)
+              Penyusunan SPJ
             </h1>
             <p className="mt-4 text-sm text-blue-100/80 leading-relaxed max-w-xs">
-              Aplikasi Layanan Urusan Realisasi untuk mengelola pagu anggaran, realisasi belanja, 
-              menyusun Nota Dinas, SPP/SPTJB, dan Kwitansi dengan metode pembayaran GU dan LS 
-              secara konsisten dan tercatat rapi.
+              Satu tempat untuk mengelola pagu anggaran, menyusun Nota Dinas, SPP/SPTJB,
+              dan Kwitansi GU secara konsisten dan tercatat rapi.
             </p>
           </div>
 

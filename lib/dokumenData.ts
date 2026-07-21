@@ -113,8 +113,11 @@ export async function buildDokumenData(pengajuanId: string) {
     subtotal: formatRupiah(r.subtotal),
     // dipakai di loop rincian Nota Dinas
     jenis_belanja: rekening?.jenis_belanja,
+    belanja: rekening?.jenis_belanja, // alias -- dipakai di template sesuai lampiran contoh
     uraian_kegiatan: r.nama_item,
+    rincian_belanja: r.nama_item, // alias -- dipakai di template sesuai lampiran contoh
     jumlah_pengajuan: formatRupiah(r.subtotal),
+    realisasi: formatRupiah(r.subtotal), // alias -- kolom "Ajuan Skrg" per baris rincian
   }));
 
   // Potongan pajak -- daftar DINAMIS (bukan 4 slot tetap seperti versi
@@ -131,12 +134,18 @@ export async function buildDokumenData(pengajuanId: string) {
   return {
     nama_skpd: NAMA_SKPD_SATU_BARIS,
     nama_skpd_2baris: NAMA_SKPD_DUA_BARIS,
+    skpd: NAMA_SKPD_SATU_BARIS, // alias -- dipakai di template sesuai lampiran contoh
     tahun_anggaran: tahunAnggaran,
     tahapan_dpa: dpa?.tahapan,
+    program: program?.nama_program, // alias program_nama
+    kegiatan: kegiatan?.nama_kegiatan, // alias nama_kegiatan/kegiatan_nama
+    sub_kegiatan: subKeg?.nama_sub_kegiatan, // alias nama_sub_kegiatan/sub_kegiatan_nama
     kode_rekening: rekening?.kode_rekening,
+    kode_rekening_kegiatan: subKeg?.kode_sub_kegiatan, // alias kode_sub_kegiatan -- kode di baris tingkat Kegiatan/Sub Kegiatan
     kode_rekening_lengkap: kodeRekeningLengkap,
     kelompok_belanja: rekening?.kelompok_belanja || "",
     jenis_belanja: rekening?.jenis_belanja,
+    belanja: rekening?.jenis_belanja, // alias -- dipakai di template sesuai lampiran contoh
     sumber_dana: rekening?.sumber_dana,
     kode_sub_kegiatan: subKeg?.kode_sub_kegiatan,
     sub_kegiatan_nama: subKeg?.nama_sub_kegiatan,
@@ -144,17 +153,22 @@ export async function buildDokumenData(pengajuanId: string) {
     kegiatan_nama: kegiatan?.nama_kegiatan,
     nama_kegiatan: kegiatan?.nama_kegiatan,
     program_nama: program?.nama_program,
+    pagu: formatRupiah(dpa?.pagu_anggaran || 0), // alias pagu_anggaran
     pagu_anggaran: formatRupiah(dpa?.pagu_anggaran || 0),
     uraian_kegiatan: pengajuan.uraian_kegiatan,
     uraian_kegiatan_lengkap: pengajuan.uraian_kegiatan,
+    uraian_belanja: pengajuan.uraian_kegiatan, // alias -- dipakai di template SPTJB sesuai lampiran contoh
     jumlah_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
     total_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
+    realisasi: formatRupiah(pengajuan.jumlah_pengajuan), // alias -- kolom "Ajuan Skrg" di lampiran contoh
     realisasi_sebelum: formatRupiah(realisasiSebelum),
+    sisa_pagu: formatRupiah((dpa?.pagu_anggaran || 0) - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)), // alias sisa_anggaran
     sisa_anggaran: formatRupiah((dpa?.pagu_anggaran || 0) - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)),
     nomor_nota_dinas: pengajuan.nomor_nota_dinas || "-",
     nomor_bukti: pengajuan.nomor_bukti || "-",
     hari_tanggal: formatHariTanggal(pengajuan.tanggal),
     tanggal_surat: formatTanggalSurat(pengajuan.tanggal),
+    tanggal_spp: formatTanggalSurat(pengajuan.tanggal), // alias -- dipakai di template SPTJB sesuai lampiran contoh
     tanggal: pengajuan.tanggal,
     jenis_pencairan: (pengajuan as any).metode_pembayaran || "GU",
     metode_pembayaran: (pengajuan as any).metode_pembayaran || "GU",
