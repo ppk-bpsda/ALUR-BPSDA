@@ -12,7 +12,7 @@ export default async function PengajuanPage() {
   const { data: list } = await supabase
     .from("pengajuan_belanja")
     .select(
-      "id, nomor_bukti, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa!inner(tahun_anggaran, tahapan, rekening:rekening_belanja(kode_rekening))"
+      "id, nomor_bukti, metode_pembayaran, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa!inner(tahun_anggaran, tahapan, rekening:rekening_belanja(kode_rekening))"
     )
     .eq("dpa.tahun_anggaran", tahun)
     .eq("dpa.tahapan", tahapan)
@@ -44,6 +44,7 @@ export default async function PengajuanPage() {
               <th className="font-medium px-4 py-2.5">Uraian</th>
               <th className="font-medium px-4 py-2.5">Jumlah</th>
               <th className="font-medium px-4 py-2.5">Status</th>
+              <th className="font-medium px-4 py-2.5">Metode</th>
               <th className="font-medium px-4 py-2.5">Dokumen</th>
               <th className="font-medium px-4 py-2.5">Aksi</th>
             </tr>
@@ -51,7 +52,7 @@ export default async function PengajuanPage() {
           <tbody>
             {(list ?? []).length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-slate-400 text-sm">
+                <td colSpan={8} className="px-4 py-6 text-center text-slate-400 text-sm">
                   Belum ada pengajuan.
                 </td>
               </tr>
@@ -66,7 +67,18 @@ export default async function PengajuanPage() {
                 <td className="px-4 py-3 text-slate-700">Rp {formatRupiah(row.jumlah_pengajuan)}</td>
                 <td className="px-4 py-3 text-xs text-slate-500">{row.status}</td>
                 <td className="px-4 py-3">
-                  <GenerateButtons pengajuanId={row.id} />
+                  <span
+                    className={`text-[11px] font-medium rounded-full px-2 py-0.5 ${
+                      row.metode_pembayaran === "LS"
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-sky-50 text-sky-700"
+                    }`}
+                  >
+                    {row.metode_pembayaran || "GU"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <GenerateButtons pengajuanId={row.id} metodePembayaran={row.metode_pembayaran || "GU"} />
                 </td>
                 <td className="px-4 py-3">
                   <RowActions pengajuanId={row.id} />

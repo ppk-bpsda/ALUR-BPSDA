@@ -8,6 +8,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   const {
     dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima,
+    metode_pembayaran, nomor_nota_dinas, nomor_bukti,
     rincian, potongan,
   }: {
     dpa_id: string;
@@ -15,6 +16,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     uraian_kegiatan: string;
     penyedia_id: string | null;
     nama_penerima: string | null;
+    metode_pembayaran: "LS" | "GU";
+    nomor_nota_dinas: string | null;
+    nomor_bukti: string | null;
     rincian: { nama_item: string; qty: number; satuan: string; harga_satuan: number }[];
     potongan: { jenis_pajak: string; persentase: number; nominal: number }[];
   } = body;
@@ -26,6 +30,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     .update({
       dpa_id, tanggal, uraian_kegiatan, penyedia_id: penyedia_id || null,
       nama_penerima: nama_penerima || null, jumlah_pengajuan,
+      metode_pembayaran: metode_pembayaran || "GU",
+      nomor_nota_dinas: nomor_nota_dinas?.trim() || null,
+      nomor_bukti: nomor_bukti?.trim() || null,
     })
     .eq("id", id);
   if (errPengajuan) return NextResponse.json({ error: errPengajuan.message }, { status: 400 });

@@ -163,6 +163,9 @@ export default function PengajuanForm({
 
   const [dpaId, setDpaId] = useState("");
   const [tanggal, setTanggal] = useState(() => new Date().toISOString().slice(0, 10));
+  const [metodePembayaran, setMetodePembayaran] = useState<"LS" | "GU">("GU");
+  const [nomorNotaDinas, setNomorNotaDinas] = useState("");
+  const [nomorBukti, setNomorBukti] = useState("");
   const [uraian, setUraian] = useState("");
   const [penyediaId, setPenyediaId] = useState("");
   const [namaPenerima, setNamaPenerima] = useState("");
@@ -201,7 +204,7 @@ export default function PengajuanForm({
         const { data: existing } = await supabase
           .from("pengajuan_belanja")
           .select(
-            "id, dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima, dpa:dpa(tahun_anggaran, tahapan)"
+            "id, dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima, metode_pembayaran, nomor_nota_dinas, nomor_bukti, dpa:dpa(tahun_anggaran, tahapan)"
           )
           .eq("id", pengajuanId)
           .single();
@@ -213,6 +216,9 @@ export default function PengajuanForm({
           setPenyediaId(existing.penyedia_id ?? "");
           setNamaPenerima(existing.nama_penerima ?? "");
           setPenerimaDiubahManual(true); // jangan timpa nama penerima yang sudah tersimpan
+          setMetodePembayaran((existing as any).metode_pembayaran || "GU");
+          setNomorNotaDinas((existing as any).nomor_nota_dinas || "");
+          setNomorBukti((existing as any).nomor_bukti || "");
 
           const dpaPeriode = existing.dpa as any;
           setPeriode({ tahun: dpaPeriode?.tahun_anggaran, tahapan: dpaPeriode?.tahapan });
@@ -322,6 +328,9 @@ export default function PengajuanForm({
       uraian_kegiatan: uraian,
       penyedia_id: penyediaId || null,
       nama_penerima: namaPenerima.trim() || null,
+      metode_pembayaran: metodePembayaran,
+      nomor_nota_dinas: nomorNotaDinas.trim() || null,
+      nomor_bukti: nomorBukti.trim() || null,
       rincian,
       potongan: potongan.filter((p) => p.nominal !== 0),
     };
@@ -397,6 +406,46 @@ export default function PengajuanForm({
               onChange={(e) => setTanggal(e.target.value)}
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none"
             />
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Metode Pembayaran</label>
+            <select
+              value={metodePembayaran}
+              onChange={(e) => setMetodePembayaran(e.target.value as "LS" | "GU")}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none"
+            >
+              <option value="GU">GU (Ganti Uang)</option>
+              <option value="LS">LS (Langsung)</option>
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Menentukan teks "Pengajuan Pencairan {metodePembayaran}" di Nota Dinas & SPP/SPTJB.
+              {metodePembayaran === "LS" && " Kwitansi GU tidak relevan untuk LS."}
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Nomor Nota Dinas</label>
+            <input
+              type="text"
+              value={nomorNotaDinas}
+              onChange={(e) => setNomorNotaDinas(e.target.value)}
+              placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/___/35.79.121/${periode?.tahun ?? "2026"}`}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Diisi manual sesuai buku agenda surat keluar.</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Nomor Bukti (Kwitansi)</label>
+            <input
+              type="text"
+              value={nomorBukti}
+              onChange={(e) => setNomorBukti(e.target.value)}
+              placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/___/35.79.121/${periode?.tahun ?? "2026"}`}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Diisi manual, boleh sama dengan Nomor Nota Dinas.</p>
           </div>
         </div>
 

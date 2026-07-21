@@ -28,7 +28,7 @@ export async function buildDokumenData(pengajuanId: string) {
     .from("pengajuan_belanja")
     .select(
       `
-      id, dpa_id, nomor_bukti, nomor_nota_dinas, tanggal, uraian_kegiatan, jumlah_pengajuan, nama_penerima,
+      id, dpa_id, nomor_bukti, nomor_nota_dinas, metode_pembayaran, tanggal, uraian_kegiatan, jumlah_pengajuan, nama_penerima,
       penyedia:penyedia(nama_penyedia, nama_direktur, alamat, npwp, rekening_bank),
       dpa:dpa (
         tahun_anggaran, tahapan, pagu_anggaran, nomor_dpa,
@@ -156,7 +156,8 @@ export async function buildDokumenData(pengajuanId: string) {
     hari_tanggal: formatHariTanggal(pengajuan.tanggal),
     tanggal_surat: formatTanggalSurat(pengajuan.tanggal),
     tanggal: pengajuan.tanggal,
-    jenis_pencairan: "GU",
+    jenis_pencairan: (pengajuan as any).metode_pembayaran || "GU",
+    metode_pembayaran: (pengajuan as any).metode_pembayaran || "GU",
 
     nama_pptk: pptk?.nama || "-",
     pangkat_pptk: pptk?.pangkat || "",
