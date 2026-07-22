@@ -145,12 +145,14 @@ function NotaDinas({ d }: { d: any }) {
 
       <p className="mb-10">Demikian nota dinas ini disampaikan untuk menjadi periksa.</p>
 
-      <div className="w-64">
-        <p>Batu, {d.tanggal_surat}</p>
-        <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
-        <div className="h-16" />
-        <p className="underline font-medium">{d.nama_pptk}.</p>
-        <p>NIP. {d.nip_pptk}</p>
+      <div className="flex justify-end">
+        <div className="text-left w-64">
+          <p>Batu, {d.tanggal_surat}</p>
+          <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
+          <div className="h-16" />
+          <p className="underline font-medium">{d.nama_pptk}.</p>
+          <p>NIP. {d.nip_pptk}</p>
+        </div>
       </div>
     </div>
   );
@@ -201,12 +203,14 @@ function SppSptjb({ d }: { d: any }) {
         dipercayakan kepada kami.
       </p>
 
-      <div className="w-64">
-        <p>Batu, {d.tanggal_surat}</p>
-        <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
-        <div className="h-16" />
-        <p className="underline font-medium">{d.nama_pptk}</p>
-        <p>NIP. {d.nip_pptk}</p>
+      <div className="flex justify-end">
+        <div className="text-left w-64">
+          <p>Batu, {d.tanggal_surat}</p>
+          <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
+          <div className="h-16" />
+          <p className="underline font-medium">{d.nama_pptk}</p>
+          <p>NIP. {d.nip_pptk}</p>
+        </div>
       </div>
     </div>
   );
