@@ -129,16 +129,16 @@ function NotaDinas({ d }: { d: any }) {
           {(d.rincian ?? []).map((r: any, i: number) => (
             <tr key={i}>
               <td className="border border-slate-400 px-2 py-1"></td>
-              <td className="border border-slate-400 px-2 py-1" colSpan={7}>
+              <td className="border border-slate-400 px-2 py-1" colSpan={6}>
                 Belanja {d.jenis_belanja} -- {r.uraian_kegiatan}
               </td>
-              <td className="border border-slate-400 px-2 py-1 text-right">{r.jumlah_pengajuan}</td>
+              <td className="border border-slate-400 px-2 py-1 text-right" colSpan={2}>{r.jumlah_pengajuan}</td>
             </tr>
           ))}
           <tr>
             <td className="border border-slate-400 px-2 py-1"></td>
-            <td className="border border-slate-400 px-2 py-1 font-bold" colSpan={7}>TOTAL PENGAJUAN</td>
-            <td className="border border-slate-400 px-2 py-1 text-right font-bold">{d.total_pengajuan}</td>
+            <td className="border border-slate-400 px-2 py-1 font-bold" colSpan={6}>TOTAL PENGAJUAN</td>
+            <td className="border border-slate-400 px-2 py-1 text-right font-bold" colSpan={2}>{d.total_pengajuan}</td>
           </tr>
         </tbody>
       </table>
