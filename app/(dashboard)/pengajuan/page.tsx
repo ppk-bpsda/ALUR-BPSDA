@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
 import { getPeriode, tahapanLabel } from "@/lib/periode";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import GenerateButtons from "./GenerateButtons";
 import RowActions from "./RowActions";
 
@@ -27,12 +27,20 @@ export default async function PengajuanPage() {
             Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)} -- dicetak jadi dokumen dari sini.
           </p>
         </div>
-        <Link
-          href="/pengajuan/baru"
-          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg px-4 py-2"
-        >
-          <Plus className="h-4 w-4" /> Pengajuan Baru
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/pengajuan/import"
+            className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg px-4 py-2"
+          >
+            <Upload className="h-4 w-4" /> Import
+          </Link>
+          <Link
+            href="/pengajuan/baru"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg px-4 py-2"
+          >
+            <Plus className="h-4 w-4" /> Pengajuan Baru
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
