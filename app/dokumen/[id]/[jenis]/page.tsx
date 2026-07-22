@@ -88,7 +88,7 @@ function NotaDinas({ d }: { d: any }) {
         </tbody>
       </table>
 
-      <p className="mb-4">
+      <p className="mb-4 text-justify">
         Bersama ini kami menyampaikan dengan hormat Pengajuan Pencairan Anggaran kegiatan pada {d.nama_skpd}{" "}
         dengan rincian sebagai berikut:
       </p>
@@ -145,15 +145,12 @@ function NotaDinas({ d }: { d: any }) {
 
       <p className="mb-10">Demikian nota dinas ini disampaikan untuk menjadi periksa.</p>
 
-      <div className="flex justify-end">
-        <div className="text-center w-64">
-          <p>Batu, {d.tanggal_surat}</p>
-          <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
-          <div className="h-16" />
-          <p className="underline font-medium">{d.nama_pptk}</p>
-          <p>{d.pangkat_pptk}</p>
-          <p>NIP. {d.nip_pptk}</p>
-        </div>
+      <div className="w-64">
+        <p>Batu, {d.tanggal_surat}</p>
+        <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
+        <div className="h-16" />
+        <p className="underline font-medium">{d.nama_pptk}.</p>
+        <p>NIP. {d.nip_pptk}</p>
       </div>
     </div>
   );
@@ -180,14 +177,14 @@ function SppSptjb({ d }: { d: any }) {
         </tbody>
       </table>
 
-      <p className="mb-4">
+      <p className="mb-4 text-justify">
         Sehubungan dengan pembelanjaan yang kami lakukan sebesar Rp. {d.jumlah_pengajuan_angka},00 (
-        {d.jumlah_pengajuan_terbilang}), untuk Perhitungan yang terdapat pada Pengajuan Pembayaran GU{" "}
+        {d.jumlah_pengajuan_terbilang}), untuk Perhitungan yang terdapat pada Pengajuan Pembayaran {d.metode_pembayaran}{" "}
         {d.uraian_kegiatan} Kegiatan {d.nama_kegiatan} Sub Kegiatan {d.nama_sub_kegiatan} dengan ini menyatakan
         dengan sebenarnya bahwa:
       </p>
 
-      <ol className="list-decimal pl-5 space-y-2 mb-6">
+      <ol className="list-decimal pl-5 space-y-2 mb-6 text-justify">
         <li>
           Jumlah pembelanjaan tersebut di atas benar-benar dipergunakan sesuai DPA {d.tahapan_dpa}-SKPD, untuk
           keperluan {d.jenis_belanja} Kode Rekening {d.kode_rekening_lengkap}.
@@ -199,19 +196,17 @@ function SppSptjb({ d }: { d: any }) {
         <li>Bertanggung jawab atas pembelanjaan yang terjadi.</li>
       </ol>
 
-      <p className="mb-10">
+      <p className="mb-10 text-justify">
         Demikian Surat Pernyataan ini dibuat untuk melengkapi pertanggungjawaban atas penggunaan anggaran yang
         dipercayakan kepada kami.
       </p>
 
-      <div className="flex justify-end">
-        <div className="text-center w-64">
-          <p>Batu, {d.tanggal_surat}</p>
-          <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
-          <div className="h-16" />
-          <p className="underline font-medium">{d.nama_pptk}</p>
-          <p>NIP. {d.nip_pptk}</p>
-        </div>
+      <div className="w-64">
+        <p>Batu, {d.tanggal_surat}</p>
+        <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
+        <div className="h-16" />
+        <p className="underline font-medium">{d.nama_pptk}</p>
+        <p>NIP. {d.nip_pptk}</p>
       </div>
     </div>
   );
@@ -299,16 +294,14 @@ function KwitansiGu({ d }: { d: any }) {
         </tbody>
       </table>
 
-      <div className="flex justify-end mb-10">
-        <div className="text-center w-64">
-          <p>Batu, {d.tanggal_surat}</p>
-          <p>Penerima</p>
-          <div className="h-16" />
-          <p>( {d.nama_penerima} )</p>
-        </div>
+      <div className="w-64 mb-10">
+        <p>Batu, {d.tanggal_surat}</p>
+        <p>Penerima</p>
+        <div className="h-16" />
+        <p>( {d.nama_penerima} )</p>
       </div>
 
-      <table className="w-full text-center border-t border-slate-400 pt-4">
+      <table className="w-full text-left border-t border-slate-400 pt-4">
         <thead>
           <tr>
             <td className="pt-4">Setuju Dibayar</td>
