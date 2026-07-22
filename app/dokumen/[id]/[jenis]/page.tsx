@@ -298,11 +298,15 @@ function KwitansiGu({ d }: { d: any }) {
         </tbody>
       </table>
 
-      <div className="w-64 mb-10">
-        <p>Batu, {d.tanggal_surat}</p>
-        <p>Penerima</p>
-        <div className="h-16" />
-        <p>( {d.nama_penerima} )</p>
+      <div className="grid grid-cols-3 mb-10">
+        <div />
+        <div />
+        <div className="text-left">
+          <p>Batu, {d.tanggal_surat}</p>
+          <p>Penerima</p>
+          <div className="h-16" />
+          <p>( {d.nama_penerima} )</p>
+        </div>
       </div>
 
       <table className="w-full text-left border-t border-slate-400 pt-4">
