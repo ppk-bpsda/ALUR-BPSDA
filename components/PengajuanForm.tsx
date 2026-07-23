@@ -356,14 +356,13 @@ export default function PengajuanForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dpaId, dpaOptions]);
 
-  // Penyedia dipilih -> nama penerima kwitansi otomatis diisi dari nama
-  // Direktur (sesuai data Penyedia Barang/Jasa), selama belum diubah
-  // manual oleh Bendahara.
+  // Penyedia dipilih -> nama penerima kwitansi otomatis diisi dari Nama
+  // Penyedia yang dipilih, selama belum diubah manual oleh Bendahara.
   function handlePilihPenyedia(id: string) {
     setPenyediaId(id);
     if (!penerimaDiubahManual) {
       const p = penyediaOptions.find((x: any) => x.id === id);
-      setNamaPenerima(p?.nama_direktur || "");
+      setNamaPenerima(p?.nama_penyedia || "");
     }
   }
 
@@ -594,7 +593,7 @@ export default function PengajuanForm({
             )}
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Penerima Uang GU</label>
+            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Penerima</label>
             <input
               list="saran-penerima"
               value={namaPenerima}
@@ -611,7 +610,7 @@ export default function PengajuanForm({
               ))}
             </datalist>
             <p className="text-xs text-slate-400 mt-1">
-              Otomatis terisi dari Nama Direktur saat memilih Penyedia -- bisa diketik ulang manual bila perlu.
+              Otomatis terisi dari Nama Penyedia saat memilih Penyedia -- bisa diketik ulang manual bila perlu.
             </p>
           </div>
         </div>
