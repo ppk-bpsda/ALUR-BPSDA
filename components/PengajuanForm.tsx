@@ -8,15 +8,20 @@ import { Plus, Trash2, Sparkles, Info } from "lucide-react";
 type Rincian = { nama_item: string; qty: number; satuan: string; harga_satuan: number };
 type Potongan = { jenis_pajak: string; persentase: number; nominal: number };
 type JenisPengadaan = "barang" | "jasa_umum" | "jasa_boga_hotel";
+type BentukUsaha = "badan_usaha" | "perseorangan";
 
 // ---------------------------------------------------------
 // Tarif & aturan pemungutan pajak oleh Bendahara Pemerintah dalam
-// pengadaan barang/jasa -- mengacu pada PMK-58/2022 (PPN & PPh 22 yang
-// dipungut Bendahara), UU HPP, dan PP 23/2018 (PPh Final UMKM). Ini alat
-// bantu hitung, BUKAN nasihat pajak final -- Bendahara/PPK tetap wajib
-// memverifikasi status PKP, NPWP, dan ketentuan terbaru sebelum SPJ
-// diajukan, karena aturan pajak bisa berubah dan setiap transaksi punya
-// konteks masing-masing.
+// pengadaan barang/jasa -- mengacu pada PMK 51/2025 (pemungutan PPh 22,
+// menggantikan PMK 34/2017), PMK 131/2024 & PMK 11/2025 (PPN 12% dengan
+// DPP Nilai Lain 11/12 -- tarif efektif untuk barang/jasa non-mewah
+// TETAP 11%, jadi angka di kalkulator ini tidak berubah), PP 58/2023 &
+// PMK 168/2023 (PPh 21 atas jasa Bukan Pegawai orang pribadi), PMK
+// 141/2015 (jenis Jasa Lain objek PPh 23), dan PP 23/2018 (PPh Final
+// UMKM). Ini alat bantu hitung, BUKAN nasihat pajak final -- Bendahara/
+// PPK tetap wajib memverifikasi status PKP, NPWP, bentuk penyedia, dan
+// ketentuan terbaru sebelum SPJ diajukan, karena aturan pajak bisa
+// berubah dan setiap transaksi punya konteks masing-masing.
 //
 // Poin penting yang dijaga di sini:
 // - PPN HANYA dipungut kalau penyedia berstatus PKP (non-PKP tidak boleh
@@ -24,15 +29,35 @@ type JenisPengadaan = "barang" | "jasa_umum" | "jasa_boga_hotel";
 //   -- bukan sekadar 0%).
 // - Batas Rp 2.000.000 (tidak termasuk PPN, per transaksi/nota, tidak
 //   boleh dipecah) berlaku untuk PPN dan PPh 22 (pembelian BARANG).
-// - PPh 23 (JASA) TIDAK punya batas minimum -- dipungut penuh berapapun
-//   nilainya, kecuali jenis jasa yang dikecualikan (mis. jasa katering).
+// - Untuk JASA: kalau penyedia BADAN USAHA (PT/CV/koperasi/dll) -> PPh
+//   23 (2%/4% tanpa NPWP), TIDAK ada batas minimum. Kalau penyedia
+//   PERSEORANGAN (orang pribadi) -> BUKAN PPh 23, tapi PPh 21 Bukan
+//   Pegawai (DPP 50% x bruto, tarif progresif Pasal 17 UU PPh: 5% s.d.
+//   Rp60jt/tahun berjalan, 15% di atasnya s.d. Rp250jt, dst; +20% kalau
+//   tanpa NPWP). Salah kaprah yang sering terjadi di lapangan justru
+//   sebaliknya (PPh 21 dikira "khusus honor", PPh 23 dikira "khusus
+//   jasa") -- yang benar, penentunya adalah BENTUK PENYEDIA, bukan jenis
+//   pembayarannya.
+// - Kalkulator ini memakai tarif lapisan PERTAMA (5%/6%) sebagai
+//   estimasi PPh 21 Bukan Pegawai untuk SATU transaksi ini saja.
+//   Kumulatif penghasilan orang pribadi yang sama dalam satu tahun pajak
+//   (yang menentukan lapisan tarif progresif berikutnya kalau berulang)
+//   TIDAK dilacak otomatis oleh aplikasi ini -- Bendahara wajib
+//   mengecek manual kalau penyedia perseorangan yang sama menerima
+//   pembayaran berulang dalam tahun berjalan.
 // - Tarif PPh 22/23 dobel kalau penyedia tidak ber-NPWP.
-// - PPh Final UMKM (PP 23/2018) menggantikan PPh 22/23 (bukan PPN) kalau
-//   penyedia sudah punya Surat Keterangan, dan tidak punya batas minimum.
-// - Pengadaan lewat E-Katalog/E-Purchasing LKPP: metode pengadaannya
-//   beda, tapi aturan pemungutan pajaknya SAMA seperti di atas -- harga
-//   katalog LKPP lazimnya sudah termasuk PPN (netto), jadi asumsi "harga
-//   sudah termasuk PPN" di kalkulator ini tetap berlaku.
+// - PPh Final UMKM (PP 23/2018) menggantikan PPh 22/23/21 (bukan PPN)
+//   kalau penyedia sudah punya Surat Keterangan, dan tidak punya batas
+//   minimum.
+// - Pengadaan lewat E-Katalog/E-Purchasing/Toko Daring LKPP (Sistem
+//   Informasi Pengadaan Pemerintah): per PMK 58/2022, marketplace/ritel
+//   daring pengadaan itu sendiri yang DITUNJUK sebagai pemungut PPN/PPh
+//   22 dan menyetorkannya -- BUKAN Bendahara. Kalau pembayaran dilakukan
+//   dengan mekanisme Pembayaran Langsung (LS) lewat kanal tersebut,
+//   Bendahara semestinya TIDAK memungut lagi (hindari pungutan ganda).
+//   Kalkulator ini mengasumsikan pengadaan non-marketplace (Bendahara
+//   yang memungut langsung); untuk transaksi lewat marketplace resmi,
+//   cek dulu apakah pajak sudah dipungut otomatis di sana.
 // ---------------------------------------------------------
 const TARIF = {
   ppn: 0.11,
@@ -41,6 +66,7 @@ const TARIF = {
   pph22TanpaNpwp: 0.03,
   pph23: 0.02,
   pph23TanpaNpwp: 0.04,
+  pph21BukanPegawaiLapisan1: 0.05,
   pphFinalUmkm: 0.005,
   pajakDaerahRestoranHotel: 0.10,
 };
@@ -51,36 +77,63 @@ function hitungPajakOtomatis({
   statusPkp,
   adaNpwp,
   pakaiPphFinal,
+  bentukUsaha,
 }: {
   totalBelanja: number;
   jenisPengadaan: JenisPengadaan;
   statusPkp: boolean;
   adaNpwp: boolean;
   pakaiPphFinal: boolean;
+  bentukUsaha: BentukUsaha;
 }): { hasil: Potongan[]; catatan: string[] } {
   if (totalBelanja <= 0) return { hasil: [], catatan: [] };
   const catatan: string[] = [];
 
-  // Jasa boga/katering & hotel: dikecualikan dari objek PPh 23, dan
-  // umumnya bukan objek PPN tapi Pajak Daerah (PB1) yang sudah
-  // self-assessment oleh restoran/hotel -- jadi cukup ditampilkan sebagai
-  // informasi, tidak dipotong Bendahara.
+  // Jasa boga/katering & hotel: DIKECUALIKAN dari PPN (Pasal 4A UU PPN jo.
+  // PMK 70/2022 -- karena sudah jadi objek Pajak Daerah/PBJT Makanan-
+  // Minuman, untuk hindari pajak berganda), TAPI TETAP kena PPh 23 (badan)
+  // / PPh 21 Bukan Pegawai (perseorangan) seperti jasa lain -- PMK
+  // 141/2015 Pasal 1(6)(aj) TEGAS memasukkan jasa boga/katering sebagai
+  // objek PPh 23. Ini koreksi dari asumsi umum yang keliru bahwa jasa
+  // katering "dikecualikan pajak" sepenuhnya -- yang dikecualikan
+  // hanyalah PPN-nya.
   if (jenisPengadaan === "jasa_boga_hotel") {
     const dppInfo = totalBelanja / (1 + TARIF.pajakDaerahRestoranHotel);
     catatan.push(
-      "Jasa katering/hotel dikecualikan dari objek PPh 23. Pajak Daerah (PB1) di bawah ini murni " +
-        "informasi karena lazimnya sudah self-assessment oleh restoran/hotel dan sudah termasuk di harga struk -- bukan dipungut Bendahara."
+      "Jasa boga/katering/hotel dikecualikan dari PPN (sudah jadi objek Pajak Daerah PBJT Makanan-Minuman, " +
+        "lazimnya self-assessment oleh restoran/hotel & sudah termasuk di harga struk -- baris Pajak Daerah di " +
+        "bawah murni informasi, BUKAN dipungut Bendahara). Tapi PPh 23/21 di bawah TETAP dipungut seperti jasa lain."
     );
-    return {
-      hasil: [
-        {
-          jenis_pajak: "Pajak Daerah Restoran/Hotel 10% (informasi -- umumnya sudah termasuk di harga)",
-          persentase: 10,
-          nominal: Math.round(totalBelanja - dppInfo),
-        },
-      ],
-      catatan,
-    };
+    const hasilBoga: Potongan[] = [
+      {
+        jenis_pajak: "Pajak Daerah Restoran/Hotel 10% (informasi -- umumnya sudah termasuk di harga)",
+        persentase: 10,
+        nominal: Math.round(totalBelanja - dppInfo),
+      },
+    ];
+    if (pakaiPphFinal) {
+      hasilBoga.push({
+        jenis_pajak: "PPh Final UMKM (PP 23/2018) 0,5%",
+        persentase: 0.5,
+        nominal: Math.round(totalBelanja * TARIF.pphFinalUmkm),
+      });
+    } else if (bentukUsaha === "perseorangan") {
+      const dppPph21 = totalBelanja * 0.5;
+      const tarif = adaNpwp ? TARIF.pph21BukanPegawaiLapisan1 : TARIF.pph21BukanPegawaiLapisan1 * 1.2;
+      hasilBoga.push({
+        jenis_pajak: `PPh 21 Bukan Pegawai ${adaNpwp ? "5%" : "6% (tanpa NPWP)"} x 50% bruto`,
+        persentase: tarif * 100,
+        nominal: Math.round(dppPph21 * tarif),
+      });
+    } else {
+      const tarif = adaNpwp ? TARIF.pph23 : TARIF.pph23TanpaNpwp;
+      hasilBoga.push({
+        jenis_pajak: `PPh 23 ${adaNpwp ? "2%" : "4% (tanpa NPWP)"}`,
+        persentase: tarif * 100,
+        nominal: Math.round(totalBelanja * tarif),
+      });
+    }
+    return { hasil: hasilBoga, catatan };
   }
 
   const hasil: Potongan[] = [];
@@ -131,8 +184,27 @@ function hitungPajakOtomatis({
         `Nilai transaksi (Rp${Math.round(dpp).toLocaleString("id-ID")}) di bawah Rp2.000.000 -- PPh 22 tidak dipungut.`
       );
     }
+  } else if (bentukUsaha === "perseorangan") {
+    // Jasa yang diberikan ORANG PRIBADI (perseorangan) BUKAN objek PPh 23
+    // -- yang benar adalah PPh 21 Bukan Pegawai (PP 58/2023 & PMK
+    // 168/2023), DPP-nya 50% dari penghasilan bruto, dikali tarif
+    // progresif Pasal 17. Sama seperti PPh 23, tidak ada batas minimum
+    // transaksi.
+    const dppPph21 = dpp * 0.5;
+    const tarif = adaNpwp ? TARIF.pph21BukanPegawaiLapisan1 : TARIF.pph21BukanPegawaiLapisan1 * 1.2;
+    hasil.push({
+      jenis_pajak: `PPh 21 Bukan Pegawai ${adaNpwp ? "5%" : "6% (tanpa NPWP)"} x 50% bruto`,
+      persentase: tarif * 100,
+      nominal: Math.round(dppPph21 * tarif),
+    });
+    catatan.push(
+      "Penyedia berstatus Perseorangan (orang pribadi) -- dipotong PPh 21 Bukan Pegawai, BUKAN PPh 23. " +
+        "Tarif 5%/6% di atas adalah lapisan pertama (estimasi transaksi ini saja); kalau orang yang sama " +
+        "menerima pembayaran lain dalam tahun berjalan sehingga kumulatifnya tembus Rp60 juta, lapisan " +
+        "tarifnya naik (15%/25%/dst) -- cek manual, aplikasi ini tidak melacak akumulasi antar pengajuan."
+    );
   } else {
-    // PPh 23 (jasa): TIDAK ada batas minimum, selalu dipungut penuh.
+    // PPh 23 (jasa oleh BADAN USAHA): TIDAK ada batas minimum, selalu dipungut penuh.
     const tarif = adaNpwp ? TARIF.pph23 : TARIF.pph23TanpaNpwp;
     hasil.push({
       jenis_pajak: `PPh 23 ${adaNpwp ? "2%" : "4% (tanpa NPWP)"}`,
@@ -310,6 +382,7 @@ export default function PengajuanForm({
       statusPkp: Boolean(penyediaTerpilih?.status_pkp),
       adaNpwp: Boolean(penyediaTerpilih?.npwp),
       pakaiPphFinal: Boolean(penyediaTerpilih?.pph_final_umkm),
+      bentukUsaha: (penyediaTerpilih?.bentuk_usaha as BentukUsaha) || "badan_usaha",
     });
     setPotongan(hasil);
     setCatatanPajak(catatan);
@@ -627,9 +700,10 @@ export default function PengajuanForm({
             <Sparkles className="h-3.5 w-3.5" /> Hitung Otomatis
           </button>
           <p className="text-xs text-slate-400 flex-1 min-w-[220px]">
-            Mengikuti PMK-58/2022 (PPN &amp; PPh 22 dipungut Bendahara), status PKP/NPWP Penyedia di
-            atas, dan PPh Final UMKM bila ditandai di data Penyedia. Alat bantu hitung, bukan nasihat
-            pajak final -- Bendahara/PPK tetap wajib memverifikasi sebelum SPJ diajukan.
+            Mengikuti PMK 51/2025 (PPh 22), PP 58/2023 &amp; PMK 168/2023 (PPh 21 Bukan Pegawai -- kalau
+            Penyedia Perseorangan), PMK 141/2015 (PPh 23 -- kalau Penyedia Badan Usaha), status PKP/NPWP/
+            Bentuk Penyedia di atas, dan PPh Final UMKM bila ditandai di data Penyedia. Alat bantu hitung,
+            bukan nasihat pajak final -- Bendahara/PPK tetap wajib memverifikasi sebelum SPJ diajukan.
           </p>
         </div>
 
@@ -637,9 +711,11 @@ export default function PengajuanForm({
           <div className="flex items-start gap-2 text-xs text-sky-800 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 mb-3">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <p>
-              Pengadaan lewat E-Katalog/E-Purchasing LKPP: metode pengadaannya beda, tapi aturan
-              pemungutan pajak tetap sama seperti di atas. Harga di katalog LKPP lazimnya sudah netto
-              (termasuk PPN), sesuai asumsi kalkulator ini.
+              Lewat marketplace/ritel daring resmi LKPP (PMK 58/2022): marketplace itu sendiri yang DITUNJUK
+              memungut &amp; menyetor PPN/PPh 22 -- <strong>kecuali</strong> kalau pembayarannya pakai mekanisme
+              Pembayaran Langsung (LS), maka pemungutan tetap kembali ke Bendahara seperti biasa (perhitungan di
+              bawah). Cek dulu invoice/faktur dari marketplace: kalau pajaknya sudah dipungut di sana, JANGAN
+              tambahkan potongan lagi di sini (hindari pungutan ganda).
             </p>
           </div>
         )}
