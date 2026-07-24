@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPeriode, tahapanLabel, TAHAPAN_OPTIONS } from "@/lib/periode";
 import { addRekening, updateRekening, deleteRekening, addKegiatan, addSubKegiatan, salinDariTahapan } from "./actions";
 import { formatRupiah } from "@/lib/terbilang";
+import { kodeRekeningBelanja } from "@/lib/format";
 import { Trash2, Copy } from "lucide-react";
 
 export default async function RekeningPage() {
@@ -127,6 +128,9 @@ export default async function RekeningPage() {
                       defaultValue={row.rekening?.kode_rekening}
                       className="w-56 text-xs font-mono border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Kode Rekening Belanja: {kodeRekeningBelanja(row.rekening?.kode_rekening)}
+                    </p>
                   </td>
                   <td className="px-3 py-2">
                     <input
@@ -230,13 +234,17 @@ export default async function RekeningPage() {
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Kode Rekening</label>
+            <label className="text-xs font-medium text-slate-600 mb-1 block">Kode Rekening (Lengkap)</label>
             <input
               name="kode_rekening"
               required
-              placeholder="mis. 5.1.02.01.001.00024"
+              placeholder="mis. 4.01.01.2.06.0002.5.1.02.01.001.00024"
               className="w-full text-sm font-mono border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
             />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Selalu isi kode LENGKAP (kode sub kegiatan + kode rekening belanja), sama seperti tahapan
+              lain -- jangan isi kode rekening belanja saja (19 karakter terakhir), supaya tidak dobel.
+            </p>
           </div>
           <div className="sm:col-span-2">
             <label className="text-xs font-medium text-slate-600 mb-1 block">Uraian Belanja</label>

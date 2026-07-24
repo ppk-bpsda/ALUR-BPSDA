@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { kodeRekeningBelanja } from "@/lib/format";
 import { Plus, Trash2, Sparkles, Info } from "lucide-react";
 
 type Rincian = { nama_item: string; qty: number; satuan: string; harga_satuan: number };
@@ -539,6 +540,7 @@ export default function PengajuanForm({
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
               <p><span className="text-slate-400">Sub Kegiatan:</span> {dpaTerpilih.rekening?.sub_kegiatan?.nama_sub_kegiatan || "-"}</p>
               <p><span className="text-slate-400">Kode Rekening:</span> {dpaTerpilih.rekening?.kode_rekening || "-"}</p>
+              <p><span className="text-slate-400">Kode Rekening Belanja:</span> {kodeRekeningBelanja(dpaTerpilih.rekening?.kode_rekening)}</p>
               <p><span className="text-slate-400">Jenis Belanja:</span> {dpaTerpilih.rekening?.kelompok_belanja || "-"}</p>
               <p><span className="text-slate-400">Sumber Dana:</span> {dpaTerpilih.rekening?.sumber_dana || "-"}</p>
               <p><span className="text-slate-400">PPTK:</span> {dpaTerpilih.pptk?.nama || "-- belum ditentukan di Rekening & Pagu --"}</p>

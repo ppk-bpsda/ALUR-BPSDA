@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { terbilang, formatRupiah } from "@/lib/terbilang";
-import { formatTanggalSurat, formatHariTanggal } from "@/lib/format";
+import { formatTanggalSurat, formatHariTanggal, kodeRekeningBelanja } from "@/lib/format";
 
 export type DokumenData = Awaited<ReturnType<typeof buildDokumenData>>;
 
@@ -64,15 +64,23 @@ export async function buildDokumenData(pengajuanId: string) {
     .eq("pengajuan_id", pengajuanId);
 
   // Realisasi sebelum pengajuan ini -- jumlah pengajuan lain yang sudah
-  // "disetujui"/"dicairkan" di rekening (DPA) yang sama, supaya sisa
-  // anggaran yang tercetak di dokumen konsisten dengan Rekap Realisasi.
+  // "disetujui"/"dicairkan" di rekening (DPA) yang sama, TAPI HANYA yang
+  // tanggalnya di bulan-bulan SEBELUM bulan pengajuan ini (kumulatif s.d.
+  // bulan lalu -- konvensi realisasi SPJ). Pengajuan lain yang jatuh di
+  // bulan yang sama (atau bulan setelahnya, mis. data yang diinput belakangan)
+  // TIDAK ikut dihitung di sini, supaya "Realisasi Sebelum" + "Ajuan Sekarang"
+  // + "Sisa" pada dokumen konsisten dengan definisi bulan-per-bulan yang
+  // diminta, bukan sekadar "semua pengajuan lain" seperti sebelumnya.
   const dpaIdForRealisasi = (pengajuan as any).dpa_id;
+  const tanggalPengajuanIni = new Date(pengajuan.tanggal);
+  const awalBulanIni = `${tanggalPengajuanIni.getFullYear()}-${String(tanggalPengajuanIni.getMonth() + 1).padStart(2, "0")}-01`;
   const { data: realisasiLainRows } = await supabase
     .from("pengajuan_belanja")
     .select("jumlah_pengajuan")
     .eq("dpa_id", dpaIdForRealisasi)
     .in("status", ["disetujui", "dicairkan"])
-    .neq("id", pengajuanId);
+    .neq("id", pengajuanId)
+    .lt("tanggal", awalBulanIni);
   const realisasiSebelum = (realisasiLainRows ?? []).reduce(
     (s: number, r: any) => s + Number(r.jumlah_pengajuan || 0),
     0
@@ -143,6 +151,9 @@ export async function buildDokumenData(pengajuanId: string) {
     kode_rekening: rekening?.kode_rekening,
     kode_rekening_kegiatan: subKeg?.kode_sub_kegiatan, // alias kode_sub_kegiatan -- kode di baris tingkat Kegiatan/Sub Kegiatan
     kode_rekening_lengkap: kodeRekeningLengkap,
+    // 19 karakter terakhir dari kode rekening lengkap -- dipakai kalau dokumen/isian
+    // butuh "Kode Rekening Belanja" saja tanpa prefix kode sub kegiatan.
+    kode_rekening_belanja: kodeRekeningBelanja(kodeRekeningLengkap),
     kelompok_belanja: rekening?.kelompok_belanja || "",
     jenis_belanja: rekening?.jenis_belanja,
     belanja: rekening?.jenis_belanja, // alias -- dipakai di template sesuai lampiran contoh
