@@ -64,23 +64,29 @@ export async function buildDokumenData(pengajuanId: string) {
     .eq("pengajuan_id", pengajuanId);
 
   // Realisasi sebelum pengajuan ini -- jumlah pengajuan lain yang sudah
-  // "disetujui"/"dicairkan" di rekening (DPA) yang sama, TAPI HANYA yang
-  // tanggalnya di bulan-bulan SEBELUM bulan pengajuan ini (kumulatif s.d.
-  // bulan lalu -- konvensi realisasi SPJ). Pengajuan lain yang jatuh di
-  // bulan yang sama (atau bulan setelahnya, mis. data yang diinput belakangan)
-  // TIDAK ikut dihitung di sini, supaya "Realisasi Sebelum" + "Ajuan Sekarang"
-  // + "Sisa" pada dokumen konsisten dengan definisi bulan-per-bulan yang
-  // diminta, bukan sekadar "semua pengajuan lain" seperti sebelumnya.
+  // "disetujui"/"dicairkan" di rekening (DPA) yang sama, dengan tanggal
+  // SEBELUM tanggal pengajuan ini sendiri (kumulatif kronologis s.d. hari
+  // sebelum transaksi ini -- BUKAN dibatasi per bulan kalender). Ini
+  // penting karena dalam satu bulan yang sama bisa saja terjadi lebih
+  // dari satu kali realisasi (mis. 2 Nota Dinas di bulan Februari) --
+  // kalau dibatasi "bulan lalu" saja, realisasi ke-2 di bulan yang sama
+  // tidak akan mengikutsertakan realisasi ke-1 yang baru saja terjadi.
+  // Dengan filter "tanggal < tanggal pengajuan ini", urutan kronologisnya
+  // selalu benar apa pun pola tanggalnya:
+  //   - Pengajuan pertama kali (belum ada realisasi apapun) -> 0.
+  //   - Pengajuan ke-2 di bulan yang sama dengan pengajuan ke-1 -> ikut
+  //     menghitung pengajuan ke-1 tadi (sama-sama Februari, tetap masuk).
+  //   - Pengajuan di bulan berikutnya -> otomatis mengikutsertakan semua
+  //     realisasi bulan-bulan sebelumnya (termasuk yang lebih dari satu
+  //     kali dalam sebulan).
   const dpaIdForRealisasi = (pengajuan as any).dpa_id;
-  const tanggalPengajuanIni = new Date(pengajuan.tanggal);
-  const awalBulanIni = `${tanggalPengajuanIni.getFullYear()}-${String(tanggalPengajuanIni.getMonth() + 1).padStart(2, "0")}-01`;
   const { data: realisasiLainRows } = await supabase
     .from("pengajuan_belanja")
     .select("jumlah_pengajuan")
     .eq("dpa_id", dpaIdForRealisasi)
     .in("status", ["disetujui", "dicairkan"])
     .neq("id", pengajuanId)
-    .lt("tanggal", awalBulanIni);
+    .lt("tanggal", (pengajuan as any).tanggal);
   const realisasiSebelum = (realisasiLainRows ?? []).reduce(
     (s: number, r: any) => s + Number(r.jumlah_pengajuan || 0),
     0
