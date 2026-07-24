@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 const JUDUL: Record<string, string> = {
   nota_dinas: "Nota Dinas",
   spp_sptjb: "SPP / SPTJB",
-  kwitansi_gu: "Kwitansi GU",
+  kwitansi_gu: "Kuitansi",
 };
 
 export default async function DokumenPreviewPage({
@@ -50,7 +50,7 @@ export default async function DokumenPreviewPage({
 
 // ---------------------------------------------------------
 // KOP SURAT -- HANYA dipakai di Nota Dinas & SPP/SPTJB.
-// Kuitansi GU sengaja TIDAK memakai kop surat.
+// Kuitansi (LS maupun GU) sengaja TIDAK memakai kop surat.
 // Diletakkan sebagai elemen PALING ATAS (sebelum judul dokumen)
 // di dalam div.doc-sheet, supaya posisinya identik dengan kop
 // surat yang ada di baris pertama Template_Nota_Dinas.docx /
@@ -217,7 +217,7 @@ function SppSptjb({ d }: { d: any }) {
 }
 
 // ---------------------------------------------------------
-// KWITANSI GU -- mengikuti format persis yang dilampirkan
+// KUITANSI (LS maupun GU) -- mengikuti format persis yang dilampirkan
 // ---------------------------------------------------------
 function KwitansiGu({ d }: { d: any }) {
   return (

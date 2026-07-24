@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const filenameMap: Record<string, string> = {
       nota_dinas: "Nota_Dinas",
       spp_sptjb: "SPP_SPTJB",
-      kwitansi_gu: "Kwitansi_GU",
+      kwitansi_gu: "Kuitansi",
     };
     const filename = `${filenameMap[jenis]}_${dataUmum.tanggal}.docx`;
 
