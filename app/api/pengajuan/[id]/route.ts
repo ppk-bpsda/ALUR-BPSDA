@@ -66,3 +66,25 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });
 }
+
+// PATCH -- ubah status saja (draft/diajukan/disetujui/dicairkan/ditolak).
+// PENTING: kalkulasi "Realisasi Sblm" & "Sisa" di Nota Dinas HANYA
+// menghitung pengajuan berstatus disetujui/dicairkan (lihat
+// lib/dokumenData.ts) -- jadi status di sini harus diubah manual dari
+// "draft" begitu pengajuan sudah final/cair, kalau tidak Realisasi Sblm
+// akan selalu 0 di Nota Dinas berikutnya.
+const STATUS_VALID = ["draft", "diajukan", "disetujui", "dicairkan", "ditolak"];
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const supabase = createClient();
+  const body = await req.json();
+  const status = String(body?.status || "");
+
+  if (!STATUS_VALID.includes(status)) {
+    return NextResponse.json({ error: `Status tidak valid. Pilih salah satu: ${STATUS_VALID.join(", ")}.` }, { status: 400 });
+  }
+
+  const { error } = await supabase.from("pengajuan_belanja").update({ status }).eq("id", params.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ ok: true, status });
+}

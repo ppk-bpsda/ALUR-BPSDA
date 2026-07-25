@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Upload } from "lucide-react";
 import GenerateButtons from "./GenerateButtons";
 import RowActions from "./RowActions";
+import StatusSelect from "./StatusSelect";
 
 export default async function PengajuanPage() {
   const { tahun, tahapan } = getPeriode();
@@ -73,7 +74,9 @@ export default async function PengajuanPage() {
                 </td>
                 <td className="px-4 py-3 text-slate-700 max-w-sm truncate">{row.uraian_kegiatan}</td>
                 <td className="px-4 py-3 text-slate-700">Rp {formatRupiah(row.jumlah_pengajuan)}</td>
-                <td className="px-4 py-3 text-xs text-slate-500">{row.status}</td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                  <StatusSelect pengajuanId={row.id} status={row.status} />
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className={`text-[11px] font-medium rounded-full px-2 py-0.5 ${
