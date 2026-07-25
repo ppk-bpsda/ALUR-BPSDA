@@ -170,8 +170,16 @@ export async function buildDokumenData(pengajuanId: string) {
     kegiatan_nama: kegiatan?.nama_kegiatan,
     nama_kegiatan: kegiatan?.nama_kegiatan,
     program_nama: program?.nama_program,
-    pagu: formatRupiah(dpa?.pagu_anggaran || 0), // alias pagu_anggaran
-    pagu_anggaran: formatRupiah(dpa?.pagu_anggaran || 0),
+    // Kolom "Pagu" di tabel Nota Dinas: untuk pengajuan PERTAMA di dpa ini
+    // (realisasiSebelum = 0), nilainya = pagu awal DPA apa adanya. Untuk
+    // pengajuan KE-2 dst, nilainya adalah pagu awal DIKURANGI seluruh
+    // realisasi/Ajuan Sekarang transaksi-transaksi sebelumnya (jadi ikut
+    // "berjalan turun" per Nota Dinas, bukan selalu menampilkan pagu awal
+    // yang sama) -- sesuai alur yang diminta. "Sisa" kemudian tinggal
+    // kolom Pagu (yang sudah berjalan ini) dikurangi Ajuan Sekarang.
+    pagu: formatRupiah((dpa?.pagu_anggaran || 0) - realisasiSebelum), // alias pagu_anggaran
+    pagu_anggaran: formatRupiah((dpa?.pagu_anggaran || 0) - realisasiSebelum),
+    pagu_awal: formatRupiah(dpa?.pagu_anggaran || 0), // pagu asli DPA, tidak pernah berkurang -- untuk referensi/menu Rekening & Pagu
     uraian_kegiatan: pengajuan.uraian_kegiatan,
     uraian_kegiatan_lengkap: pengajuan.uraian_kegiatan,
     uraian_belanja: pengajuan.uraian_kegiatan, // alias -- dipakai di template SPTJB sesuai lampiran contoh
