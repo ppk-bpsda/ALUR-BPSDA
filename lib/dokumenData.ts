@@ -92,7 +92,13 @@ export async function buildDokumenData(pengajuanId: string) {
   let paguBerjalan = Number((pengajuan as any).dpa?.pagu_anggaran || 0);
   let realisasiSebelum = 0;
   for (const row of riwayatRows ?? []) {
-    const sisaSetelahRow = paguBerjalan - realisasiSebelum - Number((row as any).jumlah_pengajuan || 0);
+    // Sisa Nota Dinas sebelumnya = Pagu Nota Dinas itu dikurangi Ajuan
+    // Skrg-nya SAJA -- bukan dikurangi lagi Realisasi Sblm-nya, karena
+    // Pagu setiap Nota Dinas (selain yang pertama) SUDAH berupa Sisa dari
+    // Nota Dinas sebelum itu, jadi konsumsi sebelumnya sudah terhitung di
+    // situ. Realisasi Sblm hanya kolom informatif (Ajuan Skrg milik Nota
+    // Dinas sebelumnya) dan tidak ikut mengurangi Pagu berjalan di sini.
+    const sisaSetelahRow = paguBerjalan - Number((row as any).jumlah_pengajuan || 0);
     realisasiSebelum = Number((row as any).jumlah_pengajuan || 0);
     paguBerjalan = sisaSetelahRow;
   }
@@ -192,8 +198,8 @@ export async function buildDokumenData(pengajuanId: string) {
     total_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
     realisasi: formatRupiah(pengajuan.jumlah_pengajuan), // alias -- kolom "Ajuan Skrg" di lampiran contoh
     realisasi_sebelum: formatRupiah(realisasiSebelum),
-    sisa_pagu: formatRupiah(paguDokumen - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)), // alias sisa_anggaran
-    sisa_anggaran: formatRupiah(paguDokumen - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)),
+    sisa_pagu: formatRupiah(paguDokumen - Number(pengajuan.jumlah_pengajuan)), // alias sisa_anggaran -- Sisa = Pagu - Ajuan Skrg saja
+    sisa_anggaran: formatRupiah(paguDokumen - Number(pengajuan.jumlah_pengajuan)),
     nomor_nota_dinas: pengajuan.nomor_nota_dinas || "-",
     nomor_bukti: pengajuan.nomor_bukti || "-",
     hari_tanggal: formatHariTanggal(pengajuan.tanggal),

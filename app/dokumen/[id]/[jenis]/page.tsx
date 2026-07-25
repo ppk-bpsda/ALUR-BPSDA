@@ -150,7 +150,7 @@ function NotaDinas({ d }: { d: any }) {
           <p>Batu, {d.tanggal_surat}</p>
           <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
           <div className="h-16" />
-          <p className="underline font-medium">{d.nama_pptk}.</p>
+          <p className="font-medium">{d.nama_pptk}.</p>
           <p>NIP. {d.nip_pptk}</p>
         </div>
       </div>
@@ -208,7 +208,7 @@ function SppSptjb({ d }: { d: any }) {
           <p>Batu, {d.tanggal_surat}</p>
           <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
           <div className="h-16" />
-          <p className="underline font-medium">{d.nama_pptk}</p>
+          <p className="font-medium">{d.nama_pptk}</p>
           <p>NIP. {d.nip_pptk}</p>
         </div>
       </div>
@@ -324,9 +324,9 @@ function KwitansiGu({ d }: { d: any }) {
         </thead>
         <tbody>
           <tr>
-            <td className="h-16 align-bottom underline">{d.nama_kpa}</td>
-            <td className="h-16 align-bottom underline">{d.nama_pptk}</td>
-            <td className="h-16 align-bottom underline">{d.nama_bendahara}</td>
+            <td className="h-16 align-bottom">{d.nama_kpa}</td>
+            <td className="h-16 align-bottom">{d.nama_pptk}</td>
+            <td className="h-16 align-bottom">{d.nama_bendahara}</td>
           </tr>
           <tr>
             <td>NIP. {d.nip_kpa}</td>
