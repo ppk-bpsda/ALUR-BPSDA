@@ -80,12 +80,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     )
     .eq("dpa.tahun_anggaran", tahun)
     .eq("dpa.tahapan", tahapan)
-    // Semua pengajuan dihitung sbg realisasi KECUALI yang "ditolak" -- BUKAN
-    // hanya yang berstatus disetujui/dicairkan. Pengajuan yang dibuat lewat
-    // form biasa selalu tersimpan berstatus "draft" (tidak ada langkah
-    // approval terpisah di aplikasi ini), jadi mensyaratkan status
-    // disetujui/dicairkan membuat laporan ini selalu menunjukkan 0.
-    .neq("status", "ditolak");
+    .in("status", ["disetujui", "dicairkan"]);
 
   type LaporanRow = { key: string; pagu: number; realisasi: number };
   const laporanRows = new Map<string, LaporanRow>();

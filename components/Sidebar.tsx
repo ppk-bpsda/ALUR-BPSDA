@@ -28,7 +28,6 @@ const navGroups = [
     label: "Laporan",
     items: [
       { icon: FileSpreadsheet, name: "Rekap Realisasi", href: "/rekap" },
-      { icon: FileText, name: "Rekap Dokumen", href: "/rekap-dokumen" },
     ],
   },
   {
