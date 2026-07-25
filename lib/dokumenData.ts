@@ -28,10 +28,10 @@ export async function buildDokumenData(pengajuanId: string) {
     .from("pengajuan_belanja")
     .select(
       `
-      id, dpa_id, nomor_bukti, nomor_nota_dinas, metode_pembayaran, tanggal, uraian_kegiatan, jumlah_pengajuan, nama_penerima,
+      id, dpa_id, nomor_bukti, nomor_nota_dinas, metode_pembayaran, tanggal, created_at, uraian_kegiatan, jumlah_pengajuan, nama_penerima,
       penyedia:penyedia(nama_penyedia, nama_direktur, alamat, npwp, rekening_bank),
       dpa:dpa (
-        tahun_anggaran, tahapan, pagu_anggaran, nomor_dpa,
+        rekening_id, tahun_anggaran, tahapan, pagu_anggaran, nomor_dpa,
         pptk:pejabat_skpd(nama, nip, pangkat, nomor_sk),
         rekening:rekening_belanja (
           kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana,
@@ -63,49 +63,50 @@ export async function buildDokumenData(pengajuanId: string) {
     .select("*")
     .eq("pengajuan_id", pengajuanId);
 
-  // Pagu & Realisasi Sblm pada Nota Dinas mengikuti RANTAI Nota Dinas
-  // sebelumnya untuk belanja (rekening/DPA) yang sama -- BUKAN pagu DPA
-  // awal / SUM seluruh realisasi seperti sebelumnya:
-  //   - Nota Dinas PERTAMA untuk rekening ini -> Pagu = pagu sesuai DPA
-  //     tahapan berjalan (Murni/Pergeseran/Perubahan), Realisasi Sblm = 0.
-  //   - Nota Dinas KEDUA dan seterusnya -> Pagu diambil dari kolom "Sisa"
-  //     Nota Dinas SEBELUMNYA (tanggal nota dinas terakhir) untuk belanja
-  //     yang sama, dan Realisasi Sblm diambil dari kolom "Ajuan Skrg" Nota
-  //     Dinas sebelumnya itu.
-  // Ditelusuri dengan menyusuri seluruh riwayat Nota Dinas yang sudah
-  // "disetujui"/"dicairkan" secara kronologis (tanggal, lalu created_at
-  // sebagai penentu urutan kalau tanggalnya sama) dari yang pertama s.d.
-  // tepat sebelum Nota Dinas ini, supaya hasilnya selalu konsisten dengan
-  // rantai Pagu->Sisa->Pagu berikutnya, berapa pun jumlah Nota Dinas
-  // sebelumnya.
-  const dpaIdForRealisasi = (pengajuan as any).dpa_id;
+  // Pagu & Realisasi Sblm pada Nota Dinas -- sesuai contoh perhitungan
+  // (perhitungan_dalam_Nota_Dinas.xlsx) kolom Bulan/Pagu/Realisasi
+  // Sblm/Ajuan Skrg/Sisa:
+  //   - Pagu SETIAP Nota Dinas = pagu DPA tahapan yang berlaku SAAT ITU
+  //     (dpa.pagu_anggaran), diambil LANGSUNG -- BUKAN dirantai dari
+  //     "Sisa" Nota Dinas sebelumnya. Pagu hanya berubah kalau tahapan
+  //     DPA-nya berubah (Murni -> Pergeseran -> Perubahan), dan tetap
+  //     SAMA selama masih dalam tahapan yang sama, walau sudah dipakai
+  //     berkali-kali (lihat kolom B di file contoh: 32.429.052 berulang
+  //     di 3 baris sebelum berubah jadi 32.100.000 saat tahapan berganti).
+  //   - Realisasi Sblm = akumulasi (SUM) seluruh Ajuan Skrg dari SEMUA
+  //     Nota Dinas sebelumnya (disetujui/dicairkan) untuk REKENING yang
+  //     sama, LINTAS tahapan DPA (bukan cuma dpa_id yang sama) --
+  //     akumulasi ini TIDAK di-reset saat tahapan/pagu berganti (lihat
+  //     kolom C: terus bertambah dari bulan ke bulan meski Pagu di
+  //     kolom B berubah).
+  //   - Sisa = Pagu - Realisasi Sblm - Ajuan Skrg.
+  const rekeningIdForRealisasi = (pengajuan as any).dpa?.rekening_id;
+  const tahunAnggaranForRealisasi = (pengajuan as any).dpa?.tahun_anggaran;
+  const tanggalDokumenIni = (pengajuan as any).tanggal;
+  const createdAtDokumenIni = (pengajuan as any).created_at;
+
   const { data: riwayatRows } = await supabase
     .from("pengajuan_belanja")
-    .select("jumlah_pengajuan")
-    .eq("dpa_id", dpaIdForRealisasi)
+    .select("jumlah_pengajuan, tanggal, created_at, dpa!inner(rekening_id, tahun_anggaran)")
+    .eq("dpa.rekening_id", rekeningIdForRealisasi)
+    .eq("dpa.tahun_anggaran", tahunAnggaranForRealisasi)
     .in("status", ["disetujui", "dicairkan"])
-    .neq("id", pengajuanId)
-    .lt("tanggal", (pengajuan as any).tanggal)
-    .order("tanggal", { ascending: true })
-    .order("created_at", { ascending: true });
+    .neq("id", pengajuanId);
 
-  let paguBerjalan = Number((pengajuan as any).dpa?.pagu_anggaran || 0);
-  let realisasiSebelum = 0;
-  for (const row of riwayatRows ?? []) {
-    // Sisa Nota Dinas sebelumnya = Pagu Nota Dinas itu dikurangi Ajuan
-    // Skrg-nya SAJA -- bukan dikurangi lagi Realisasi Sblm-nya, karena
-    // Pagu setiap Nota Dinas (selain yang pertama) SUDAH berupa Sisa dari
-    // Nota Dinas sebelum itu, jadi konsumsi sebelumnya sudah terhitung di
-    // situ. Realisasi Sblm hanya kolom informatif (Ajuan Skrg milik Nota
-    // Dinas sebelumnya) dan tidak ikut mengurangi Pagu berjalan di sini.
-    const sisaSetelahRow = paguBerjalan - Number((row as any).jumlah_pengajuan || 0);
-    realisasiSebelum = Number((row as any).jumlah_pengajuan || 0);
-    paguBerjalan = sisaSetelahRow;
-  }
-  // Pagu dokumen ini: tetap pagu DPA kalau ini Nota Dinas pertama (riwayat
-  // kosong, paguBerjalan masih nilai awal), atau Sisa Nota Dinas
-  // sebelumnya kalau sudah ada riwayat.
-  const paguDokumen = paguBerjalan;
+  // Hanya hitung baris yang benar-benar terjadi SEBELUM dokumen ini
+  // (tanggal lebih awal, atau tanggal sama tapi created_at lebih awal --
+  // supaya urutan tetap konsisten kalau ada beberapa Nota Dinas di
+  // tanggal yang sama).
+  const realisasiSebelum = (riwayatRows ?? [])
+    .filter((row: any) => {
+      if (row.tanggal < tanggalDokumenIni) return true;
+      if (row.tanggal > tanggalDokumenIni) return false;
+      return row.created_at < createdAtDokumenIni;
+    })
+    .reduce((sum: number, row: any) => sum + Number(row.jumlah_pengajuan || 0), 0);
+
+  // Pagu dokumen ini = pagu DPA tahapan berjalan, langsung (tidak dirantai).
+  const paguDokumen = Number((pengajuan as any).dpa?.pagu_anggaran || 0);
 
   const tahunAnggaran: number = (pengajuan as any).dpa?.tahun_anggaran ?? new Date().getFullYear();
   const { data: kpaRow } = await supabase
@@ -198,8 +199,8 @@ export async function buildDokumenData(pengajuanId: string) {
     total_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
     realisasi: formatRupiah(pengajuan.jumlah_pengajuan), // alias -- kolom "Ajuan Skrg" di lampiran contoh
     realisasi_sebelum: formatRupiah(realisasiSebelum),
-    sisa_pagu: formatRupiah(paguDokumen - Number(pengajuan.jumlah_pengajuan)), // alias sisa_anggaran -- Sisa = Pagu - Ajuan Skrg saja
-    sisa_anggaran: formatRupiah(paguDokumen - Number(pengajuan.jumlah_pengajuan)),
+    sisa_pagu: formatRupiah(paguDokumen - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)), // alias sisa_anggaran -- Sisa = Pagu - Realisasi Sblm - Ajuan Skrg
+    sisa_anggaran: formatRupiah(paguDokumen - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)),
     nomor_nota_dinas: pengajuan.nomor_nota_dinas || "-",
     nomor_bukti: pengajuan.nomor_bukti || "-",
     hari_tanggal: formatHariTanggal(pengajuan.tanggal),
