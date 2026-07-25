@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { renderTemplate } from "@/lib/renderTemplate";
 import { buildDokumenData } from "@/lib/dokumenData";
 
+// PENTING: route ini menghitung "Realisasi Sblm" & "Sisa" dari data
+// pengajuan_belanja TERBARU (lihat lib/dokumenData.ts). Tanpa baris di
+// bawah, Next.js App Router (v14) bisa meng-cache hasil fetch ke Supabase
+// dan/atau hasil route ini, sehingga angka Realisasi Sblm "membeku" pada
+// nilai pertama kali dokumen ini digenerate -- tidak ikut berubah walau
+// status pengajuan sebelumnya sudah diubah jadi disetujui/dicairkan.
+// force-dynamic memastikan route ini SELALU dieksekusi ulang tiap request
+// dan TIDAK memakai Data Cache / Full Route Cache Next.js.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 const TEMPLATE_FILE: Record<string, string> = {
   nota_dinas: "Template_Nota_Dinas.docx",
   spp_sptjb: "Template_SPP_SPTJB.docx",

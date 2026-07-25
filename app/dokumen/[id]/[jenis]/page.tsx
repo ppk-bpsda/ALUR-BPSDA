@@ -2,6 +2,15 @@ import { buildDokumenData } from "@/lib/dokumenData";
 import PrintToolbar from "./PrintToolbar";
 import { notFound } from "next/navigation";
 
+// PENTING -- lihat catatan yang sama di app/api/generate-dokumen/route.ts:
+// tanpa ini, Next.js bisa menyajikan versi cache dari halaman pratinjau ini,
+// sehingga "Realisasi Sblm" / "Sisa" tidak ikut ter-update walau status
+// pengajuan sebelumnya (di rekening yang sama) sudah diubah jadi
+// disetujui/dicairkan.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 const JUDUL: Record<string, string> = {
   nota_dinas: "Nota Dinas",
   spp_sptjb: "SPP / SPTJB",
