@@ -20,10 +20,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     nomor_nota_dinas: string | null;
     nomor_bukti: string | null;
     rincian: { nama_item: string; qty: number; satuan: string; harga_satuan: number }[];
-    potongan: { jenis_pajak: string; persentase: number; nominal: number }[];
+    potongan: { jenis_pajak: string; persentase: number; nominal: number; tipe?: "potongan" | "tambahan" }[];
   } = body;
 
-  const jumlah_pengajuan = rincian.reduce((s, r) => s + r.qty * r.harga_satuan, 0);
+  // Lihat komentar setara di app/api/pengajuan/route.ts -- jumlah_pengajuan
+  // harus ikut memasukkan potongan bertipe 'tambahan' (PPN atas harga netto).
+  const totalTambahan = (potongan ?? [])
+    .filter((p) => p.tipe === "tambahan")
+    .reduce((s, p) => s + Number(p.nominal || 0), 0);
+  const jumlah_pengajuan = rincian.reduce((s, r) => s + r.qty * r.harga_satuan, 0) + totalTambahan;
 
   const { error: errPengajuan } = await supabase
     .from("pengajuan_belanja")

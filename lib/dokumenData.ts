@@ -155,10 +155,17 @@ export async function buildDokumenData(pengajuanId: string) {
   // kalkulator pajak di form Pengajuan Belanja (PPN, PPh 22/23, PPh
   // Final UMKM, Pajak Daerah, atau potongan manual dengan label bebas).
   const potongan = (potonganRows ?? []).map((p: any) => ({
-    jenis_pajak: p.jenis_pajak,
+    jenis_pajak: p.tipe === "tambahan" ? `${p.jenis_pajak} (tambahan)` : p.jenis_pajak,
     nominal: formatRupiah(p.nominal),
   }));
-  const totalPotongan = (potonganRows ?? []).reduce((s: number, p: any) => s + Number(p.nominal || 0), 0);
+  // `jumlah_pengajuan` sudah mencakup potongan bertipe 'tambahan' (PPN
+  // atas harga netto -- lihat perhitungan di app/api/pengajuan/route.ts
+  // & [id]/route.ts), jadi di sini HANYA potongan yang MENGURANGI
+  // penerimaan penyedia (tipe 'potongan', termasuk baris lama yang
+  // belum diisi `tipe` / null) yang dikurangkan lagi.
+  const totalPotongan = (potonganRows ?? [])
+    .filter((p: any) => p.tipe !== "tambahan")
+    .reduce((s: number, p: any) => s + Number(p.nominal || 0), 0);
   const jumlahDiterima = Number(pengajuan.jumlah_pengajuan) - totalPotongan;
 
   return {

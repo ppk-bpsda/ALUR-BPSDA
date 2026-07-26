@@ -22,7 +22,13 @@ type Rincian = { nama_item: string; qty: number; satuan: string; harga_satuan: n
 // 20260726010000_perbesar_presisi_harga_satuan.sql) supaya kalau
 // dikalikan qty lagi hasilnya kembali persis/hampir persis ke angka
 // nego semula -- tidak selisih beberapa rupiah gara-gara pembulatan.
-type Potongan = { jenis_pajak: string; persentase: number; nominal: number };
+// `tipe`: 'potongan' (default) = mengurangi Jumlah Diterima Penyedia
+// (withholding PPh, atau PPN kalau harga sudah termasuk pajak).
+// 'tambahan' = menambah Total Tagihan (PPN ketika harga yang diinput
+// adalah harga NETTO/belum termasuk pajak -- lihat migrasi
+// 20260726020000_tambah_tipe_potongan_pajak.sql & pembaruan sistem
+// pajak Katalog Elektronik LKPP per 16 Juli 2025).
+type Potongan = { jenis_pajak: string; persentase: number; nominal: number; tipe?: "potongan" | "tambahan" };
 type JenisPengadaan = "barang" | "jasa_umum" | "jasa_boga_hotel";
 type BentukUsaha = "badan_usaha" | "perseorangan";
 
@@ -96,6 +102,7 @@ function hitungPajakOtomatis({
   bentukUsaha,
   paksaPph22DibawahBatas,
   alasanPaksaPph22,
+  hargaTermasukPpn = true,
 }: {
   totalBelanja: number;
   jenisPengadaan: JenisPengadaan;
@@ -113,6 +120,18 @@ function hitungPajakOtomatis({
   // WAJIB dicatat untuk jejak audit/SPJ.
   paksaPph22DibawahBatas?: boolean;
   alasanPaksaPph22?: string;
+  // Skema harga: TRUE (default, skema lama) = harga yang diinput di
+  // Rincian Item DIANGGAP SUDAH termasuk PPN (umum berlaku untuk
+  // harga E-Katalog sebelum Juli 2025) -- PPN dihitung mundur (dibagi
+  // 1,11) dan jadi POTONGAN yang mengurangi Jumlah Diterima Penyedia.
+  // FALSE (skema baru) = harga yang diinput adalah harga NETTO/belum
+  // termasuk PPN (sesuai pembaruan sistem pajak Katalog Elektronik
+  // LKPP per 16 Juli 2025, di mana "Ringkasan Pesanan"/Surat Pesanan
+  // menampilkan harga produk TANPA PPN dan PPN dihitung terpisah atas
+  // total transaksi) -- PPN dihitung maju (dikali 1,11) dan jadi
+  // TAMBAHAN yang menambah Total Tagihan, BUKAN mengurangi yang
+  // diterima penyedia.
+  hargaTermasukPpn?: boolean;
 }): { hasil: Potongan[]; catatan: string[] } {
   if (totalBelanja <= 0) return { hasil: [], catatan: [] };
   const catatan: string[] = [];
@@ -166,11 +185,19 @@ function hitungPajakOtomatis({
 
   const hasil: Potongan[] = [];
 
-  // DPP: kalau penyedia PKP, harga diasumsikan sudah termasuk PPN (umum
-  // berlaku termasuk untuk harga di E-Katalog LKPP) sehingga DPP dihitung
-  // dari total dibagi 1,11. Kalau Non-PKP, tidak ada PPN yang terkandung
-  // di harga, jadi DPP = harga penuh.
-  const dpp = statusPkp ? totalBelanja / (1 + TARIF.ppn) : totalBelanja;
+  // DPP & nominal PPN beda rumus tergantung skema harga (lihat komentar
+  // parameter `hargaTermasukPpn` di atas):
+  // - Skema lama (hargaTermasukPpn=true, default): harga di Rincian Item
+  //   dianggap sudah termasuk PPN -> DPP = total/1,11, PPN = total-DPP,
+  //   dan PPN jadi POTONGAN (mengurangi yang diterima penyedia) karena
+  //   PPN itu memang sudah "nempel" di angka yang sama.
+  // - Skema baru (hargaTermasukPpn=false): harga di Rincian Item adalah
+  //   harga NETTO -> DPP = total apa adanya, PPN = DPP x 11% dihitung
+  //   MAJU, dan PPN jadi TAMBAHAN (menambah Total Tagihan) karena harga
+  //   netto tidak mengandung PPN sama sekali -- kalau dipotongkan lagi
+  //   dari totalBelanja, penyedia rugi dua kali.
+  const dpp = statusPkp ? (hargaTermasukPpn ? totalBelanja / (1 + TARIF.ppn) : totalBelanja) : totalBelanja;
+  const nominalPpn = hargaTermasukPpn ? Math.round(totalBelanja - dpp) : Math.round(dpp * TARIF.ppn);
 
   if (!statusPkp) {
     catatan.push(
@@ -181,7 +208,23 @@ function hitungPajakOtomatis({
 
   if (statusPkp) {
     if (dpp >= TARIF.batasMinPpnPph22) {
-      hasil.push({ jenis_pajak: "PPN 11%", persentase: 11, nominal: Math.round(totalBelanja - dpp) });
+      hasil.push({
+        jenis_pajak: hargaTermasukPpn ? "PPN 11% (sudah termasuk di harga)" : "PPN 11% (tambahan atas harga netto)",
+        persentase: 11,
+        nominal: nominalPpn,
+        tipe: hargaTermasukPpn ? "potongan" : "tambahan",
+      });
+      if (!hargaTermasukPpn) {
+        catatan.push(
+          "Harga di atas diperlakukan sebagai harga NETTO (belum termasuk PPN) -- PPN ditambahkan di atas " +
+            "sebagai komponen Total Tagihan, BUKAN memotong yang diterima penyedia. Ini sesuai pembaruan sistem " +
+            "penghitungan pajak Katalog Elektronik LKPP sejak 16 Juli 2025 (Surat Pesanan/Invoice menampilkan " +
+            "harga produk tanpa PPN, PPN dihitung terpisah atas total transaksi). Cek juga: kalau barang/jasa " +
+            "TIDAK tergolong mewah, tarif efektif PPN tetap 11% (DPP Nilai Lain 11/12 x 12%, PMK 131/2024) -- " +
+            "kalau penyedia mengenakan flat 12% dari harga netto untuk barang non-mewah, itu KELEBIHAN pungut, " +
+            "konfirmasikan ke penyedia sebelum dibayar."
+        );
+      }
     } else {
       catatan.push(
         `Nilai transaksi (DPP Rp${Math.round(dpp).toLocaleString("id-ID")}) di bawah Rp2.000.000 -- ` +
@@ -294,6 +337,7 @@ export default function PengajuanForm({
   const [eKatalog, setEKatalog] = useState(false);
   const [paksaPph22DibawahBatas, setPaksaPph22DibawahBatas] = useState(false);
   const [alasanPaksaPph22, setAlasanPaksaPph22] = useState("");
+  const [hargaTermasukPpn, setHargaTermasukPpn] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -353,7 +397,7 @@ export default function PengajuanForm({
 
           const [{ data: rincianData }, { data: potonganData }] = await Promise.all([
             supabase.from("rincian_belanja").select("nama_item, qty, satuan, harga_satuan").eq("pengajuan_id", pengajuanId),
-            supabase.from("potongan_pajak").select("jenis_pajak, persentase, nominal").eq("pengajuan_id", pengajuanId),
+            supabase.from("potongan_pajak").select("jenis_pajak, persentase, nominal, tipe").eq("pengajuan_id", pengajuanId),
           ]);
           if (rincianData && rincianData.length > 0) setRincian(rincianData as Rincian[]);
           if (potonganData) setPotongan(potonganData as Potongan[]);
@@ -461,6 +505,7 @@ export default function PengajuanForm({
       bentukUsaha: (penyediaTerpilih?.bentuk_usaha as BentukUsaha) || "badan_usaha",
       paksaPph22DibawahBatas,
       alasanPaksaPph22,
+      hargaTermasukPpn,
     });
     setPotongan(hasil);
     setCatatanPajak(catatan);
@@ -792,6 +837,15 @@ export default function PengajuanForm({
             <input type="checkbox" checked={eKatalog} onChange={(e) => setEKatalog(e.target.checked)} className="h-3.5 w-3.5" />
             Lewat E-Katalog/E-Purchasing LKPP
           </label>
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 pb-2">
+            <input
+              type="checkbox"
+              checked={hargaTermasukPpn}
+              onChange={(e) => setHargaTermasukPpn(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            Harga Rincian Item di atas sudah termasuk PPN
+          </label>
           <button
             type="button"
             onClick={handleHitungOtomatis}
@@ -843,7 +897,23 @@ export default function PengajuanForm({
               memungut &amp; menyetor PPN/PPh 22 -- <strong>kecuali</strong> kalau pembayarannya pakai mekanisme
               Pembayaran Langsung (LS), maka pemungutan tetap kembali ke Bendahara seperti biasa (perhitungan di
               bawah). Cek dulu invoice/faktur dari marketplace: kalau pajaknya sudah dipungut di sana, JANGAN
-              tambahkan potongan lagi di sini (hindari pungutan ganda).
+              tambahkan potongan lagi di sini (hindari pungutan ganda). Sejak pembaruan sistem pajak Katalog
+              Elektronik per 16 Juli 2025, harga di "Ringkasan Pesanan"/Surat Pesanan e-katalog TIDAK LAGI
+              otomatis termasuk PPN -- PPN dihitung terpisah atas total transaksi. Kalau invoice/Surat Pesanan
+              yang kamu terima menunjukkan skema itu, matikan toggle "Harga sudah termasuk PPN" di bawah.
+            </p>
+          </div>
+        )}
+
+        {!hargaTermasukPpn && (
+          <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <p>
+              Harga di Rincian Item diperlakukan sebagai harga NETTO (belum termasuk PPN). PPN akan dihitung
+              MAJU (DPP x 11%) dan ditambahkan sebagai komponen Total Tagihan -- tidak memotong yang diterima
+              penyedia. Pastikan barang/jasa ini memang bukan barang mewah (kalau bukan, tarif efektif PPN
+              seharusnya tetap 11% lewat DPP Nilai Lain 11/12, meski tarif nominalnya disebut 12% -- PMK
+              131/2024). Kalau penyedia mengenakan flat 12% untuk barang non-mewah, itu kelebihan pungut.
             </p>
           </div>
         )}
@@ -870,14 +940,23 @@ export default function PengajuanForm({
               <input
                 value={p.jenis_pajak}
                 onChange={(e) => updatePotongan(i, { jenis_pajak: e.target.value })}
-                className="col-span-7 text-sm border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
+                className="col-span-6 text-sm border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
               />
               <input
                 type="number"
                 value={p.nominal}
                 onChange={(e) => updatePotongan(i, { nominal: Number(e.target.value) })}
-                className="col-span-4 text-sm border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
+                className="col-span-3 text-sm border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
               />
+              <select
+                value={p.tipe ?? "potongan"}
+                onChange={(e) => updatePotongan(i, { tipe: e.target.value as "potongan" | "tambahan" })}
+                title="Potongan = mengurangi yang diterima penyedia. Tambahan = menambah Total Tagihan (mis. PPN atas harga netto)."
+                className="col-span-2 text-xs border border-slate-200 rounded-lg px-1 py-1.5 outline-none bg-white"
+              >
+                <option value="potongan">Potongan</option>
+                <option value="tambahan">Tambahan</option>
+              </select>
               <button
                 onClick={() => setPotongan(potongan.filter((_, idx) => idx !== i))}
                 className="col-span-1 text-rose-500"
@@ -888,18 +967,34 @@ export default function PengajuanForm({
           ))}
         </div>
         <button
-          onClick={() => setPotongan([...potongan, { jenis_pajak: "", persentase: 0, nominal: 0 }])}
+          onClick={() => setPotongan([...potongan, { jenis_pajak: "", persentase: 0, nominal: 0, tipe: "potongan" }])}
           className="mt-3 text-xs flex items-center gap-1 text-emerald-600 font-medium"
         >
           <Plus className="h-3.5 w-3.5" /> Tambah potongan manual
         </button>
 
-        {potongan.length > 0 && (
-          <p className="text-sm font-medium text-slate-900 mt-4 pt-3 border-t border-slate-100">
-            Jumlah Diterima Bersih: Rp{" "}
-            {(totalBelanja - potongan.reduce((s, p) => s + Number(p.nominal || 0), 0)).toLocaleString("id-ID")}
-          </p>
-        )}
+        {potongan.length > 0 && (() => {
+          const totalTambahan = potongan
+            .filter((p) => p.tipe === "tambahan")
+            .reduce((s, p) => s + Number(p.nominal || 0), 0);
+          const totalPotongan = potongan
+            .filter((p) => p.tipe !== "tambahan")
+            .reduce((s, p) => s + Number(p.nominal || 0), 0);
+          const totalTagihan = totalBelanja + totalTambahan;
+          const jumlahDiterima = totalTagihan - totalPotongan;
+          return (
+            <div className="mt-4 pt-3 border-t border-slate-100 space-y-0.5">
+              {totalTambahan > 0 && (
+                <p className="text-xs text-slate-500">
+                  Total Tagihan (harga + tambahan pajak): Rp {totalTagihan.toLocaleString("id-ID")}
+                </p>
+              )}
+              <p className="text-sm font-medium text-slate-900">
+                Jumlah Diterima Bersih: Rp {jumlahDiterima.toLocaleString("id-ID")}
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       <button

@@ -19,10 +19,18 @@ export async function POST(req: Request) {
     nomor_nota_dinas: string | null;
     nomor_bukti: string | null;
     rincian: { nama_item: string; qty: number; satuan: string; harga_satuan: number }[];
-    potongan: { jenis_pajak: string; persentase: number; nominal: number }[];
+    potongan: { jenis_pajak: string; persentase: number; nominal: number; tipe?: "potongan" | "tambahan" }[];
   } = body;
 
-  const jumlah_pengajuan = rincian.reduce((s, r) => s + r.qty * r.harga_satuan, 0);
+  // jumlah_pengajuan = Total Tagihan yang sebenarnya dibebankan ke
+  // anggaran (bukan cuma jumlah harga di Rincian Item) -- kalau ada
+  // potongan bertipe 'tambahan' (mis. PPN yang dihitung terpisah di
+  // atas harga netto, lihat migrasi 20260726020000), nilainya harus
+  // ikut ditambahkan supaya realisasi anggaran tidak understated.
+  const totalTambahan = (potongan ?? [])
+    .filter((p) => p.tipe === "tambahan")
+    .reduce((s, p) => s + Number(p.nominal || 0), 0);
+  const jumlah_pengajuan = rincian.reduce((s, r) => s + r.qty * r.harga_satuan, 0) + totalTambahan;
 
   const { data: pengajuan, error: errPengajuan } = await supabase
     .from("pengajuan_belanja")
