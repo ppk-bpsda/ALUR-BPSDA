@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     metode_pembayaran: "LS" | "GU";
     nomor_nota_dinas: string | null;
     nomor_bukti: string | null;
-    rincian: { nama_item: string; qty: number; satuan: string; harga_satuan: number }[];
+    rincian: { nama_item: string; qty: number; satuan: string; harga_satuan: number; kena_ppn_tambahan?: boolean }[];
     potongan: { jenis_pajak: string; persentase: number; nominal: number; tipe?: "potongan" | "tambahan" }[];
   } = body;
 

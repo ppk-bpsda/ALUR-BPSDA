@@ -14,7 +14,20 @@ import { Plus, Trash2, Sparkles, Info } from "lucide-react";
 // dikalikan qty lagi hasilnya kembali persis/hampir persis ke angka
 // nego semula -- tidak selisih beberapa rupiah gara-gara pembulatan
 // harga per unit.
-type Rincian = { nama_item: string; qty: number; satuan: string; harga_satuan: number; _totalNego?: string };
+// `kena_ppn_tambahan`: per-baris (BUKAN per-pengajuan) -- sebagian item
+// Katalog Elektronik INAPROC dikenakan tambahan PPN 12% terpisah dari
+// harga produk (lihat migrasi 20260726030000). Kalau dicentang, harga
+// baris itu dianggap NETTO dan PPN-nya dihitung maju & dijumlah
+// terpisah sebagai komponen 'tambahan', independen dari toggle PPN
+// global pengajuan (yang tetap berlaku untuk baris yang tidak dicentang).
+type Rincian = {
+  nama_item: string;
+  qty: number;
+  satuan: string;
+  harga_satuan: number;
+  kena_ppn_tambahan?: boolean;
+  _totalNego?: string;
+};
 // `totalNego` cuma state lokal di form (BUKAN dikirim ke database) --
 // dipakai sebagai cara alternatif mengisi harga_satuan: petugas isi
 // TOTAL yang disepakati saat negosiasi, sistem yang membagi ke harga
@@ -396,7 +409,7 @@ export default function PengajuanForm({
           setDpaOptions(dpa ?? []);
 
           const [{ data: rincianData }, { data: potonganData }] = await Promise.all([
-            supabase.from("rincian_belanja").select("nama_item, qty, satuan, harga_satuan").eq("pengajuan_id", pengajuanId),
+            supabase.from("rincian_belanja").select("nama_item, qty, satuan, harga_satuan, kena_ppn_tambahan").eq("pengajuan_id", pengajuanId),
             supabase.from("potongan_pajak").select("jenis_pajak, persentase, nominal, tipe").eq("pengajuan_id", pengajuanId),
           ]);
           if (rincianData && rincianData.length > 0) setRincian(rincianData as Rincian[]);
@@ -475,6 +488,14 @@ export default function PengajuanForm({
   }
 
   const totalBelanja = rincian.reduce((s, r) => s + Number(r.qty || 0) * Number(r.harga_satuan || 0), 0);
+  // Basis khusus untuk item yang ditandai `kena_ppn_tambahan` (lihat
+  // migrasi 20260726030000) -- dipisah dari totalBelanja karena PPN-nya
+  // dihitung MAJU & terpisah, independen dari toggle "Harga sudah
+  // termasuk PPN" global yang cuma berlaku untuk item lainnya.
+  const totalBasisPpnTambahanPerItem = rincian
+    .filter((r) => r.kena_ppn_tambahan)
+    .reduce((s, r) => s + Number(r.qty || 0) * Number(r.harga_satuan || 0), 0);
+  const totalBelanjaTanpaPpnTambahanPerItem = totalBelanja - totalBasisPpnTambahanPerItem;
 
   function updateRincian(i: number, patch: Partial<Rincian>) {
     setRincian((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -496,8 +517,15 @@ export default function PengajuanForm({
     setPotongan((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
   function handleHitungOtomatis() {
+    // Item yang TIDAK ditandai `kena_ppn_tambahan` tetap lewat alur
+    // perhitungan lengkap seperti biasa (PPN global, PPh 22/23/21,
+    // dst). Ambang Rp2 juta PPN/PPh 22 di sini otomatis hanya menimbang
+    // total item-item ini -- kalau nota digabung dengan item ber-PPN
+    // tambahan terpisah, cek manual apakah ambang batas seharusnya
+    // dihitung dari total keseluruhan nota (aturan "per transaksi/nota",
+    // bukan per baris/item).
     const { hasil, catatan } = hitungPajakOtomatis({
-      totalBelanja,
+      totalBelanja: totalBelanjaTanpaPpnTambahanPerItem,
       jenisPengadaan,
       statusPkp: Boolean(penyediaTerpilih?.status_pkp),
       adaNpwp: Boolean(penyediaTerpilih?.npwp),
@@ -507,6 +535,27 @@ export default function PengajuanForm({
       alasanPaksaPph22,
       hargaTermasukPpn,
     });
+
+    // Item yang DITANDAI `kena_ppn_tambahan`: PPN dihitung maju dari
+    // harga netto per item, dijumlah jadi satu baris 'tambahan'
+    // terpisah -- tidak lewat DPP/toggle global di atas.
+    const jumlahItemPpnTambahan = rincian.filter((r) => r.kena_ppn_tambahan).length;
+    if (totalBasisPpnTambahanPerItem > 0 && jumlahItemPpnTambahan > 0) {
+      const nominalPpnTambahan = Math.round(totalBasisPpnTambahanPerItem * TARIF.ppn);
+      hasil.push({
+        jenis_pajak: `PPN 11% tambahan -- ${jumlahItemPpnTambahan} item Katalog dgn PPN terpisah`,
+        persentase: 11,
+        nominal: nominalPpnTambahan,
+        tipe: "tambahan",
+      });
+      catatan.push(
+        `${jumlahItemPpnTambahan} item ditandai dikenakan PPN tambahan terpisah (basis netto Rp${totalBasisPpnTambahanPerItem.toLocaleString("id-ID")}) -- ` +
+          "dihitung dengan tarif efektif 11% (DPP Nilai Lain 11/12, PMK 131/2024). Kalau item-item ini BUKAN " +
+          "barang mewah tapi Faktur Pajak/invoice penyedia mengenakan flat 12% dari harga netto, itu kelebihan " +
+          "pungut -- konfirmasikan ke penyedia sebelum dibayar."
+      );
+    }
+
     setPotongan(hasil);
     setCatatanPajak(catatan);
   }
@@ -807,6 +856,16 @@ export default function PengajuanForm({
                   </span>
                 )}
               </div>
+              <label className="col-span-11 col-start-2 flex items-center gap-1.5 text-[11px] text-amber-700">
+                <input
+                  type="checkbox"
+                  checked={Boolean(r.kena_ppn_tambahan)}
+                  onChange={(e) => updateRincian(i, { kena_ppn_tambahan: e.target.checked })}
+                  className="h-3 w-3"
+                />
+                Item ini dikenakan tambahan PPN 12% terpisah (mis. item Katalog Elektronik INAPROC tertentu) --
+                harga di atas dianggap netto, PPN dihitung maju &amp; tidak memotong yang diterima penyedia.
+              </label>
             </div>
           ))}
         </div>
