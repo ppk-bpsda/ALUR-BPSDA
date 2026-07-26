@@ -299,7 +299,7 @@ export default function PengajuanForm({
           const { data: dpa } = await supabase
             .from("dpa")
             .select(
-              "id, tahapan, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
+              "id, tahapan, pagu_anggaran, rekening_id, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
             )
             .eq("tahun_anggaran", dpaPeriode?.tahun_anggaran)
             .eq("tahapan", dpaPeriode?.tahapan);
@@ -322,7 +322,7 @@ export default function PengajuanForm({
         const { data: dpa } = await supabase
           .from("dpa")
           .select(
-            "id, tahapan, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
+            "id, tahapan, pagu_anggaran, rekening_id, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
           )
           .eq("tahun_anggaran", periodeRes.tahun)
           .eq("tahapan", periodeRes.tahapan);
@@ -338,24 +338,40 @@ export default function PengajuanForm({
     [penyediaOptions, penyediaId]
   );
 
-  // Sisa anggaran rekening yang dipilih -- pagu dikurangi realisasi lain
-  // yang sudah disetujui/dicairkan (di luar pengajuan yang sedang diedit).
+  // Sisa anggaran rekening yang dipilih -- pagu (sesuai tahapan yang
+  // dipilih) dikurangi realisasi lain yang sudah disetujui/dicairkan.
+  // Realisasi diakumulasi dari SEMUA tahapan (murni + pergeseran +
+  // perubahan) pada rekening & tahun anggaran yang sama -- bukan cuma
+  // dari dpa_id tahapan yang sedang dipilih -- supaya konsisten dengan
+  // formula yang sama di menu Rekap (lihat migrasi
+  // 20260726000000_akumulasi_realisasi_lintas_tahapan.sql).
   useEffect(() => {
     if (!dpaId) return setSisaAnggaran(null);
+    const dpaTerpilihSaatIni = dpaOptions.find((d: any) => d.id === dpaId);
+    const rekeningId = dpaTerpilihSaatIni?.rekening_id;
+    if (!rekeningId || !periode?.tahun) return setSisaAnggaran(null);
     (async () => {
+      const { data: dpaSerekening } = await supabase
+        .from("dpa")
+        .select("id")
+        .eq("rekening_id", rekeningId)
+        .eq("tahun_anggaran", periode.tahun);
+      const dpaIds = (dpaSerekening ?? []).map((d: any) => d.id);
+      if (dpaIds.length === 0) return setSisaAnggaran(null);
+
       const { data: realisasiLain } = await supabase
         .from("pengajuan_belanja")
         .select("id, jumlah_pengajuan")
-        .eq("dpa_id", dpaId)
+        .in("dpa_id", dpaIds)
         .in("status", ["disetujui", "dicairkan"]);
       const totalRealisasiLain = (realisasiLain ?? [])
         .filter((r: any) => r.id !== pengajuanId)
         .reduce((s: number, r: any) => s + Number(r.jumlah_pengajuan || 0), 0);
-      const pagu = dpaOptions.find((d: any) => d.id === dpaId)?.pagu_anggaran ?? 0;
+      const pagu = dpaTerpilihSaatIni?.pagu_anggaran ?? 0;
       setSisaAnggaran(Number(pagu) - totalRealisasiLain);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dpaId, dpaOptions]);
+  }, [dpaId, dpaOptions, periode]);
 
   // Penyedia dipilih -> nama penerima kwitansi otomatis diisi dari Nama
   // Direktur/Penanggung Jawab (sesuai data Penyedia Barang/Jasa), selama

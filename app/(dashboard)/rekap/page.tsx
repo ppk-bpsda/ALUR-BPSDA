@@ -20,8 +20,10 @@ export default async function RekapPage() {
       <div>
         <h1 className="font-serif text-xl text-slate-900">Rekap Realisasi Anggaran</h1>
         <p className="text-sm text-slate-500">
-          Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)}. Dihitung otomatis dari status pengajuan
-          "disetujui"/"dicairkan". Ganti periode lewat menu akun di kanan atas untuk melihat tahapan lain.
+          Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)}. Pagu mengikuti tahapan yang dipilih, sedangkan
+          Realisasi adalah akumulasi dari seluruh tahapan (Murni + Pergeseran + Perubahan) pada rekening yang sama --
+          dihitung otomatis dari status pengajuan "disetujui"/"dicairkan". Sisa = Pagu tahapan ini dikurangi
+          Realisasi akumulasi tsb. Ganti periode lewat menu akun di kanan atas untuk melihat tahapan lain.
         </p>
       </div>
 
