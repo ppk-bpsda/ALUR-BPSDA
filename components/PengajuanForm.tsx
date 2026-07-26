@@ -6,7 +6,22 @@ import { createClient } from "@/lib/supabase/client";
 import { kodeRekeningBelanja } from "@/lib/format";
 import { Plus, Trash2, Sparkles, Info } from "lucide-react";
 
-type Rincian = { nama_item: string; qty: number; satuan: string; harga_satuan: number };
+// `_totalNego` adalah field UI SAJA (diawali underscore, distrip sebelum
+// dikirim ke API/DB) -- cara alternatif mengisi harga_satuan: petugas
+// isi TOTAL yang disepakati saat negosiasi, sistem yang membagi ke
+// harga per satuan (presisi 4 desimal, lihat migrasi
+// 20260726010000_perbesar_presisi_harga_satuan.sql) supaya kalau
+// dikalikan qty lagi hasilnya kembali persis/hampir persis ke angka
+// nego semula -- tidak selisih beberapa rupiah gara-gara pembulatan
+// harga per unit.
+type Rincian = { nama_item: string; qty: number; satuan: string; harga_satuan: number; _totalNego?: string };
+// `totalNego` cuma state lokal di form (BUKAN dikirim ke database) --
+// dipakai sebagai cara alternatif mengisi harga_satuan: petugas isi
+// TOTAL yang disepakati saat negosiasi, sistem yang membagi ke harga
+// per satuan (presisi 4 desimal, lihat migrasi
+// 20260726010000_perbesar_presisi_harga_satuan.sql) supaya kalau
+// dikalikan qty lagi hasilnya kembali persis/hampir persis ke angka
+// nego semula -- tidak selisih beberapa rupiah gara-gara pembulatan.
 type Potongan = { jenis_pajak: string; persentase: number; nominal: number };
 type JenisPengadaan = "barang" | "jasa_umum" | "jasa_boga_hotel";
 type BentukUsaha = "badan_usaha" | "perseorangan";
@@ -79,6 +94,8 @@ function hitungPajakOtomatis({
   adaNpwp,
   pakaiPphFinal,
   bentukUsaha,
+  paksaPph22DibawahBatas,
+  alasanPaksaPph22,
 }: {
   totalBelanja: number;
   jenisPengadaan: JenisPengadaan;
@@ -86,6 +103,16 @@ function hitungPajakOtomatis({
   adaNpwp: boolean;
   pakaiPphFinal: boolean;
   bentukUsaha: BentukUsaha;
+  // Override manual: sebagian penyedia (PKP Badan Usaha) tetap MINTA PPh
+  // 22 dipotong walau transaksi di bawah Rp2 juta, biasanya supaya
+  // mereka punya Bukti Potong untuk rekonsiliasi pembukuan/pelaporan
+  // pajak sendiri. Ini BUKAN kewajiban Bendahara (PMK 59/2022 Pasal 18
+  // membebaskan Bendahara dari kewajiban memotong di bawah batas itu),
+  // tapi tidak dilarang juga kalau kedua pihak sepakat -- makanya
+  // disediakan sebagai pilihan manual, bukan default, dan alasannya
+  // WAJIB dicatat untuk jejak audit/SPJ.
+  paksaPph22DibawahBatas?: boolean;
+  alasanPaksaPph22?: string;
 }): { hasil: Potongan[]; catatan: string[] } {
   if (totalBelanja <= 0) return { hasil: [], catatan: [] };
   const catatan: string[] = [];
@@ -158,7 +185,10 @@ function hitungPajakOtomatis({
     } else {
       catatan.push(
         `Nilai transaksi (DPP Rp${Math.round(dpp).toLocaleString("id-ID")}) di bawah Rp2.000.000 -- ` +
-          "PPN tidak dipungut sesuai PMK-58/2022 Pasal 5, selama tidak dipecah dari transaksi lain."
+          "sesuai PMK 59/2022 Pasal 18, Bendahara TIDAK perlu memungut/menyetorkan PPN lewat mekanisme " +
+          "khusus. Tapi PPN tetap TERUTANG: PKP wajib menerbitkan Faktur Pajak & menyetor sendiri PPN-nya " +
+          "(self-assessment) lewat SPT Masa PPN mereka. Kalau harga/invoice dari penyedia sudah mencantumkan " +
+          "PPN, itu SAH dan memang seharusnya begitu -- JANGAN dipungut lagi oleh Bendahara (hindari pungutan ganda)."
       );
     }
   }
@@ -178,6 +208,20 @@ function hitungPajakOtomatis({
         persentase: tarif * 100,
         nominal: Math.round(dpp * tarif),
       });
+    } else if (paksaPph22DibawahBatas) {
+      // Override manual: penyedia minta tetap dipotong walau di bawah
+      // batas. Lihat catatan di parameter fungsi ini.
+      const tarif = adaNpwp ? TARIF.pph22 : TARIF.pph22TanpaNpwp;
+      hasil.push({
+        jenis_pajak: `PPh 22 ${adaNpwp ? "1,5%" : "3% (tanpa NPWP)"} (dipotong atas permintaan penyedia, di bawah batas Rp2 juta)`,
+        persentase: tarif * 100,
+        nominal: Math.round(dpp * tarif),
+      });
+      catatan.push(
+        `Transaksi ini di bawah Rp2.000.000 sehingga Bendahara sebenarnya TIDAK wajib memotong PPh 22 ` +
+          `(PMK 59/2022 Pasal 18), tapi tetap dipotong atas permintaan penyedia. Alasan/catatan: ` +
+          `${alasanPaksaPph22?.trim() || "(tidak diisi -- lengkapi untuk jejak audit/SPJ)"}`
+      );
     } else if (statusPkp) {
       catatan.push("PPh 22 juga tidak dipungut untuk transaksi barang di bawah Rp2.000.000.");
     } else {
@@ -248,6 +292,8 @@ export default function PengajuanForm({
   const [catatanPajak, setCatatanPajak] = useState<string[]>([]);
   const [jenisPengadaan, setJenisPengadaan] = useState<JenisPengadaan>("barang");
   const [eKatalog, setEKatalog] = useState(false);
+  const [paksaPph22DibawahBatas, setPaksaPph22DibawahBatas] = useState(false);
+  const [alasanPaksaPph22, setAlasanPaksaPph22] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -389,6 +435,19 @@ export default function PengajuanForm({
   function updateRincian(i: number, patch: Partial<Rincian>) {
     setRincian((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
+  // Isi harga_satuan dari TOTAL nego (dibagi qty), presisi 4 desimal --
+  // lihat komentar di definisi type Rincian & migrasi presisi harga.
+  function updateTotalNego(i: number, totalNegoStr: string) {
+    const total = Number(totalNegoStr.replace(/[^0-9.-]/g, ""));
+    setRincian((prev) =>
+      prev.map((r, idx) => {
+        if (idx !== i) return r;
+        const qty = Number(r.qty || 0);
+        const harga_satuan = qty > 0 && total > 0 ? Math.round((total / qty) * 10000) / 10000 : r.harga_satuan;
+        return { ...r, harga_satuan, _totalNego: totalNegoStr };
+      })
+    );
+  }
   function updatePotongan(i: number, patch: Partial<Potongan>) {
     setPotongan((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
@@ -400,6 +459,8 @@ export default function PengajuanForm({
       adaNpwp: Boolean(penyediaTerpilih?.npwp),
       pakaiPphFinal: Boolean(penyediaTerpilih?.pph_final_umkm),
       bentukUsaha: (penyediaTerpilih?.bentuk_usaha as BentukUsaha) || "badan_usaha",
+      paksaPph22DibawahBatas,
+      alasanPaksaPph22,
     });
     setPotongan(hasil);
     setCatatanPajak(catatan);
@@ -421,7 +482,9 @@ export default function PengajuanForm({
       metode_pembayaran: metodePembayaran,
       nomor_nota_dinas: nomorNotaDinas.trim() || null,
       nomor_bukti: nomorBukti.trim() || null,
-      rincian,
+      // `_totalNego` murni bantuan input di UI, jangan ikut dikirim --
+      // kolom itu tidak ada di tabel rincian_belanja.
+      rincian: rincian.map(({ _totalNego, ...r }) => r),
       potongan: potongan.filter((p) => p.nominal !== 0),
     };
 
@@ -669,9 +732,10 @@ export default function PengajuanForm({
               />
               <input
                 type="number"
+                step="0.0001"
                 placeholder="Harga satuan"
                 value={r.harga_satuan}
-                onChange={(e) => updateRincian(i, { harga_satuan: Number(e.target.value) })}
+                onChange={(e) => updateRincian(i, { harga_satuan: Number(e.target.value), _totalNego: undefined })}
                 className="col-span-3 text-sm border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
               />
               <button
@@ -680,6 +744,24 @@ export default function PengajuanForm({
               >
                 <Trash2 className="h-4 w-4" />
               </button>
+              <div className="col-span-11 col-start-2 flex items-center gap-2">
+                <span className="text-[11px] text-slate-400 shrink-0">
+                  atau isi Total Nego (dibagi qty otomatis):
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Total hasil negosiasi (opsional)"
+                  value={r._totalNego ?? ""}
+                  onChange={(e) => updateTotalNego(i, e.target.value)}
+                  className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-500"
+                />
+                {r._totalNego && (
+                  <span className="text-[11px] text-slate-400 shrink-0">
+                    = Rp{Number(r.harga_satuan).toLocaleString("id-ID", { maximumFractionDigits: 4 })}/satuan
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -723,6 +805,34 @@ export default function PengajuanForm({
             Bentuk Penyedia di atas, dan PPh Final UMKM bila ditandai di data Penyedia. Alat bantu hitung,
             bukan nasihat pajak final -- Bendahara/PPK tetap wajib memverifikasi sebelum SPJ diajukan.
           </p>
+        </div>
+
+        <div className="bg-amber-50/60 border border-amber-100 rounded-lg p-3 mb-3 space-y-2">
+          <label className="flex items-center gap-1.5 text-xs text-slate-700">
+            <input
+              type="checkbox"
+              checked={paksaPph22DibawahBatas}
+              onChange={(e) => setPaksaPph22DibawahBatas(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            Penyedia tetap minta PPh 22 dipotong walau transaksi di bawah Rp2 juta
+          </label>
+          <p className="text-[11px] text-slate-400">
+            Sesuai PMK 59/2022 Pasal 18, Bendahara sebenarnya TIDAK wajib memotong PPh 22 untuk transaksi
+            di bawah Rp2 juta -- tapi kalau penyedia (biasanya PKP Badan Usaha) tetap minta dipotong supaya
+            mereka punya Bukti Potong untuk rekonsiliasi pembukuan sendiri, itu boleh disepakati. Catatan:
+            untuk PPN, penyedia yang mencantumkan PPN di bawah Rp2 juta di invoice/faktur mereka memang SAH
+            (self-assessment) -- tidak perlu opsi ini, cukup jangan dipungut ulang oleh Bendahara.
+          </p>
+          {paksaPph22DibawahBatas && (
+            <input
+              type="text"
+              value={alasanPaksaPph22}
+              onChange={(e) => setAlasanPaksaPph22(e.target.value)}
+              placeholder="Alasan/catatan untuk jejak audit-SPJ (wajib diisi)"
+              className="w-full text-xs border border-amber-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
+            />
+          )}
         </div>
 
         {eKatalog && (
