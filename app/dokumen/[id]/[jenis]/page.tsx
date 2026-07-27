@@ -45,10 +45,15 @@ export default async function DokumenPreviewPage({
           body { background: white !important; }
           .doc-sheet { box-shadow: none !important; margin: 0 !important; }
         }
-        @page { size: A4; margin: 18mm; }
+        /* Kiri 3cm, kanan 2cm, atas 1,5cm, bawah 2cm -- sama seperti margin
+           di template .docx (lihat templates/Template_*.docx). */
+        @page { size: A4; margin: 15mm 20mm 20mm 30mm; }
       `}</style>
 
-      <div className="doc-sheet max-w-[210mm] mx-auto my-6 bg-white shadow-md p-[15mm] text-[13px] leading-relaxed text-slate-900">
+      <div
+        className="doc-sheet max-w-[210mm] mx-auto my-6 bg-white shadow-md text-[13.3px] leading-relaxed text-slate-900"
+        style={{ fontFamily: "Arial, Helvetica, sans-serif", padding: "15mm 20mm 20mm 30mm" }}
+      >
         {params.jenis === "nota_dinas" && <NotaDinas d={d} />}
         {params.jenis === "spp_sptjb" && <SppSptjb d={d} />}
         {params.jenis === "kwitansi_gu" && <KwitansiGu d={d} />}

@@ -1,10 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { kodeRekeningBelanja } from "@/lib/format";
-import { Plus, Trash2, Sparkles, Info } from "lucide-react";
+import { Plus, Trash2, Sparkles, Info, Search } from "lucide-react";
+
+// Label rekening/DPA yang ditampilkan di combobox pencarian & dipakai untuk
+// mencocokkan kata kunci -- gabungan kode rekening, uraian belanja, nama
+// kegiatan/sub kegiatan/program, supaya pegawai bisa cari pakai salah satu
+// dari itu (banyak yang lebih hafal nama kegiatan daripada kode rekening).
+function labelRekening(d: any) {
+  return `${d?.rekening?.kode_rekening ?? ""} -- ${d?.rekening?.jenis_belanja ?? ""}`;
+}
+function haystackRekening(d: any) {
+  return [
+    d?.rekening?.kode_rekening,
+    d?.rekening?.jenis_belanja,
+    d?.rekening?.sub_kegiatan?.nama_sub_kegiatan,
+    d?.rekening?.sub_kegiatan?.kode_sub_kegiatan,
+    d?.rekening?.sub_kegiatan?.kegiatan?.nama_kegiatan,
+    d?.rekening?.sub_kegiatan?.kegiatan?.program?.nama_program,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
 
 // `_totalNego` adalah field UI SAJA (diawali underscore, distrip sebelum
 // dikirim ke API/DB) -- cara alternatif mengisi harga_satuan: petugas
@@ -348,11 +369,26 @@ export default function PengajuanForm({
   const [catatanPajak, setCatatanPajak] = useState<string[]>([]);
   const [jenisPengadaan, setJenisPengadaan] = useState<JenisPengadaan>("barang");
   const [eKatalog, setEKatalog] = useState(false);
+  // Transaksi lewat E-Katalog/E-Purchasing INAPROC di bawah Rp2 juta:
+  // metode pembayaran GU otomatis & pajak dipungut/disetor oleh sistem
+  // Katalog sendiri -- TIDAK perlu dihitung ulang di aplikasi ini (lihat
+  // pemakaian `pajakDitanganiKatalog` di bawah). Kalau pembayarannya
+  // ternyata dilaksanakan DI LUAR sistem Katalog (mis. transaksi melewati
+  // batas kode bayar Katalog), centang toggle ini supaya aturan otomatis
+  // di atas TIDAK berlaku & perhitungan pajak manual kembali muncul.
+  const [pembayaranDiluarKatalog, setPembayaranDiluarKatalog] = useState(false);
   const [paksaPph22DibawahBatas, setPaksaPph22DibawahBatas] = useState(false);
   const [alasanPaksaPph22, setAlasanPaksaPph22] = useState("");
   const [hargaTermasukPpn, setHargaTermasukPpn] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Combobox pencarian Rekening/DPA (lihat labelRekening/haystackRekening di
+  // atas) -- diminta pegawai supaya bisa cari rekening lewat nama
+  // kegiatan/sub kegiatan, bukan cuma hafal kode rekening.
+  const [rekeningQuery, setRekeningQuery] = useState("");
+  const [rekeningOpen, setRekeningOpen] = useState(false);
+  const rekeningBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -436,6 +472,37 @@ export default function PengajuanForm({
   }, []);
 
   const dpaTerpilih = useMemo(() => dpaOptions.find((d: any) => d.id === dpaId), [dpaOptions, dpaId]);
+
+  // Rekening yang cocok dengan kata kunci pencarian -- kata kunci dipecah per
+  // kata, dan SEMUA kata harus ketemu di gabungan kode rekening/kegiatan/sub
+  // kegiatan/uraian belanja (supaya "listrik kantor" bisa nemu meski urutan
+  // katanya beda dari nama rekening aslinya).
+  const dpaOptionsTersaring = useMemo(() => {
+    const kataKunci = rekeningQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (kataKunci.length === 0) return dpaOptions;
+    return dpaOptions.filter((d: any) => {
+      const hay = haystackRekening(d);
+      return kataKunci.every((k) => hay.includes(k));
+    });
+  }, [dpaOptions, rekeningQuery]);
+
+  // Sinkronkan teks di kotak pencarian dengan rekening yang sedang dipilih --
+  // hanya saat dropdown TERTUTUP, supaya tidak menimpa ketikan pegawai saat
+  // sedang mencari.
+  useEffect(() => {
+    if (!rekeningOpen) setRekeningQuery(dpaTerpilih ? labelRekening(dpaTerpilih) : "");
+  }, [dpaTerpilih, rekeningOpen]);
+
+  // Tutup dropdown pencarian kalau klik di luar kotaknya.
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (rekeningBoxRef.current && !rekeningBoxRef.current.contains(e.target as Node)) {
+        setRekeningOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const penyediaTerpilih = useMemo(
     () => penyediaOptions.find((p: any) => p.id === penyediaId),
     [penyediaOptions, penyediaId]
@@ -497,6 +564,27 @@ export default function PengajuanForm({
     .reduce((s, r) => s + Number(r.qty || 0) * Number(r.harga_satuan || 0), 0);
   const totalBelanjaTanpaPpnTambahanPerItem = totalBelanja - totalBasisPpnTambahanPerItem;
 
+  // Catatan dari hasil uji coba pegawai (poin 4 & 6):
+  // - Belanja barang/jasa lewat E-Katalog INAPROC dengan nilai DI BAWAH
+  //   Rp2 juta: metode pembayaran otomatis GU, dan pemotongan pajak sudah
+  //   dilakukan oleh sistem Katalog sendiri -- TIDAK perlu dihitung lagi
+  //   di aplikasi ini.
+  // - Begitu metode pembayarannya LS, ATAU nilainya sudah Rp2 juta atau
+  //   lebih, ATAU pegawai menandai transaksi dilaksanakan di luar sistem
+  //   Katalog (mis. melewati batas kode bayar Katalog) -- pemungutan
+  //   pajak kembali sepenuhnya jadi tanggung jawab aplikasi ini, sesuai
+  //   ketentuan pajak pengadaan barang/jasa pemerintah yang berlaku, baik
+  //   transaksinya lewat e-Katalog/toko daring ataupun tidak.
+  const pajakDitanganiSistemKatalog =
+    eKatalog && totalBelanja > 0 && totalBelanja < TARIF.batasMinPpnPph22 && !pembayaranDiluarKatalog;
+
+  useEffect(() => {
+    if (pajakDitanganiSistemKatalog && metodePembayaran !== "GU") {
+      setMetodePembayaran("GU");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pajakDitanganiSistemKatalog]);
+
   function updateRincian(i: number, patch: Partial<Rincian>) {
     setRincian((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
@@ -517,6 +605,13 @@ export default function PengajuanForm({
     setPotongan((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
   function handleHitungOtomatis() {
+    // Lewat E-Katalog di bawah Rp2 juta -- pajak sudah ditangani sistem
+    // Katalog, jangan hitung/tambahkan potongan apa pun di sini (poin 4).
+    if (pajakDitanganiSistemKatalog) {
+      setPotongan([]);
+      setCatatanPajak([]);
+      return;
+    }
     // Item yang TIDAK ditandai `kena_ppn_tambahan` tetap lewat alur
     // perhitungan lengkap seperti biasa (PPN global, PPh 22/23/21,
     // dst). Ambang Rp2 juta PPN/PPh 22 di sini otomatis hanya menimbang
@@ -633,20 +728,50 @@ export default function PengajuanForm({
           Pilih rekening, lalu isi field di bawah ini secara manual
         </p>
         <div className="grid sm:grid-cols-2 gap-4">
-          <div>
+          <div ref={rekeningBoxRef} className="relative">
             <label className="text-xs font-medium text-slate-600 mb-1.5 block">Rekening / DPA</label>
-            <select
-              value={dpaId}
-              onChange={(e) => setDpaId(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none"
-            >
-              <option value="">-- pilih rekening --</option>
-              {dpaOptions.map((d: any) => (
-                <option key={d.id} value={d.id}>
-                  {d.rekening?.kode_rekening} -- {d.rekening?.jenis_belanja}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={rekeningQuery}
+                onChange={(e) => {
+                  setRekeningQuery(e.target.value);
+                  setRekeningOpen(true);
+                  if (dpaId) setDpaId(""); // ketikan baru berarti sedang cari ulang, bukan rekening yang sudah dipilih
+                }}
+                onFocus={() => setRekeningOpen(true)}
+                placeholder="Cari kode rekening, kegiatan, atau sub kegiatan..."
+                className="w-full text-sm border border-slate-200 rounded-lg pl-8 pr-3 py-2 outline-none"
+              />
+            </div>
+            {rekeningOpen && (
+              <div className="absolute z-20 mt-1 w-full max-h-72 overflow-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+                {dpaOptionsTersaring.length === 0 && (
+                  <p className="text-xs text-slate-400 px-3 py-3">Tidak ada rekening yang cocok.</p>
+                )}
+                {dpaOptionsTersaring.map((d: any) => (
+                  <button
+                    type="button"
+                    key={d.id}
+                    onClick={() => {
+                      setDpaId(d.id);
+                      setRekeningQuery(labelRekening(d));
+                      setRekeningOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b border-slate-50 last:border-0 ${
+                      d.id === dpaId ? "bg-emerald-50" : ""
+                    }`}
+                  >
+                    <p className="font-mono text-slate-700">{d.rekening?.kode_rekening}</p>
+                    <p className="text-slate-500">{d.rekening?.jenis_belanja}</p>
+                    <p className="text-slate-400">
+                      {d.rekening?.sub_kegiatan?.kegiatan?.nama_kegiatan} -- {d.rekening?.sub_kegiatan?.nama_sub_kegiatan}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1.5 block">Tanggal</label>
@@ -665,15 +790,22 @@ export default function PengajuanForm({
             <select
               value={metodePembayaran}
               onChange={(e) => setMetodePembayaran(e.target.value as "LS" | "GU")}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none"
+              disabled={pajakDitanganiSistemKatalog}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none disabled:bg-slate-50 disabled:text-slate-400"
             >
               <option value="GU">GU (Ganti Uang)</option>
               <option value="LS">LS (Langsung)</option>
             </select>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Menentukan teks "Pengajuan Pencairan {metodePembayaran}" di Nota Dinas & SPP/SPTJB.
-              {metodePembayaran === "LS" && " Kwitansi GU tidak relevan untuk LS."}
-            </p>
+            {pajakDitanganiSistemKatalog ? (
+              <p className="text-[11px] text-slate-400 mt-1">
+                Otomatis GU -- transaksi E-Katalog di bawah Rp2 juta (lihat catatan di bagian Potongan Pajak di bawah).
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-400 mt-1">
+                Menentukan teks "Pengajuan Pencairan {metodePembayaran}" di Nota Dinas & SPP/SPTJB.
+                {metodePembayaran === "LS" && " Kwitansi GU tidak relevan untuk LS."}
+              </p>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1.5 block">Nomor Nota Dinas</label>
@@ -896,6 +1028,17 @@ export default function PengajuanForm({
             <input type="checkbox" checked={eKatalog} onChange={(e) => setEKatalog(e.target.checked)} className="h-3.5 w-3.5" />
             Lewat E-Katalog/E-Purchasing LKPP
           </label>
+          {eKatalog && totalBelanja > 0 && totalBelanja < TARIF.batasMinPpnPph22 && (
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 pb-2">
+              <input
+                type="checkbox"
+                checked={pembayaranDiluarKatalog}
+                onChange={(e) => setPembayaranDiluarKatalog(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              Pembayaran dilaksanakan di luar sistem Katalog (mis. melewati batas kode bayar)
+            </label>
+          )}
           <label className="flex items-center gap-1.5 text-xs text-slate-600 pb-2">
             <input
               type="checkbox"
@@ -908,7 +1051,8 @@ export default function PengajuanForm({
           <button
             type="button"
             onClick={handleHitungOtomatis}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-medium rounded-lg px-3 py-2"
+            disabled={pajakDitanganiSistemKatalog}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg px-3 py-2"
           >
             <Sparkles className="h-3.5 w-3.5" /> Hitung Otomatis
           </button>
@@ -919,6 +1063,21 @@ export default function PengajuanForm({
             bukan nasihat pajak final -- Bendahara/PPK tetap wajib memverifikasi sebelum SPJ diajukan.
           </p>
         </div>
+
+        {pajakDitanganiSistemKatalog && (
+          <div className="flex items-start gap-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-3">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <p>
+              Transaksi E-Katalog/E-Purchasing INAPROC di bawah Rp2.000.000: metode pembayaran otomatis GU dan
+              pemungutan/penyetoran pajak sudah dilakukan oleh sistem Katalog sendiri -- <strong>tidak perlu
+              dihitung atau ditambahkan lagi</strong> di aplikasi ini. Kalau pembayarannya ternyata dilaksanakan
+              di luar sistem Katalog (mis. transaksi melewati batas kode bayar), centang toggle "Pembayaran
+              dilaksanakan di luar sistem Katalog" di atas supaya kalkulator pajak manual di bawah aktif kembali.
+              Untuk metode LS, atau transaksi Rp2.000.000 ke atas (lewat E-Katalog/toko daring ataupun tidak),
+              pemungutan pajak tetap sepenuhnya mengikuti ketentuan yang berlaku dan dihitung di sini seperti biasa.
+            </p>
+          </div>
+        )}
 
         <div className="bg-amber-50/60 border border-amber-100 rounded-lg p-3 mb-3 space-y-2">
           <label className="flex items-center gap-1.5 text-xs text-slate-700">
@@ -1027,7 +1186,8 @@ export default function PengajuanForm({
         </div>
         <button
           onClick={() => setPotongan([...potongan, { jenis_pajak: "", persentase: 0, nominal: 0, tipe: "potongan" }])}
-          className="mt-3 text-xs flex items-center gap-1 text-emerald-600 font-medium"
+          disabled={pajakDitanganiSistemKatalog}
+          className="mt-3 text-xs flex items-center gap-1 text-emerald-600 disabled:text-slate-300 disabled:cursor-not-allowed font-medium"
         >
           <Plus className="h-3.5 w-3.5" /> Tambah potongan manual
         </button>

@@ -141,13 +141,15 @@ export default async function RekeningPage() {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <input
+                    <select
                       name="kelompok_belanja"
-                      list="kelompok-belanja-opsi"
-                      defaultValue={row.rekening?.kelompok_belanja ?? ""}
-                      placeholder="Belanja Operasi"
-                      className="w-32 text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
-                    />
+                      defaultValue={row.rekening?.kelompok_belanja || "Belanja Barang/Jasa"}
+                      title='Menentukan isi kolom "Jenis Rek." di Nota Dinas'
+                      className="w-40 text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none bg-white"
+                    >
+                      <option value="Belanja Barang/Jasa">Belanja Barang/Jasa</option>
+                      <option value="Belanja Modal">Belanja Modal</option>
+                    </select>
                   </td>
                   <td className="px-3 py-2">
                     <input
@@ -207,13 +209,6 @@ export default async function RekeningPage() {
         </table>
       </div>
 
-      <datalist id="kelompok-belanja-opsi">
-        <option value="Belanja Operasi" />
-        <option value="Belanja Modal" />
-        <option value="Belanja Tidak Terduga" />
-        <option value="Belanja Transfer" />
-      </datalist>
-
       <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-5">
         <p className="text-sm font-medium text-slate-900 mb-3">+ Tambah Rekening &amp; Pagu Baru</p>
         <form action={addRekening} className="grid sm:grid-cols-6 gap-3 items-end">
@@ -256,13 +251,16 @@ export default async function RekeningPage() {
             />
           </div>
           <div className="sm:col-span-1">
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Kelompok</label>
-            <input
+            <label className="text-xs font-medium text-slate-600 mb-1 block">Jenis Rek.</label>
+            <select
               name="kelompok_belanja"
-              list="kelompok-belanja-opsi"
-              placeholder="Belanja Operasi"
+              defaultValue="Belanja Barang/Jasa"
+              title='Menentukan isi kolom "Jenis Rek." di Nota Dinas'
               className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
-            />
+            >
+              <option value="Belanja Barang/Jasa">Belanja Barang/Jasa</option>
+              <option value="Belanja Modal">Belanja Modal</option>
+            </select>
           </div>
           <div className="sm:col-span-1">
             <label className="text-xs font-medium text-slate-600 mb-1 block">Sumber Dana</label>
