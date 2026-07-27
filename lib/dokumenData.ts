@@ -145,6 +145,15 @@ export async function buildDokumenData(pengajuanId: string) {
     jenis_belanja: rekening?.jenis_belanja,
     belanja: rekening?.jenis_belanja, // alias -- dipakai di template sesuai lampiran contoh
     uraian_kegiatan: r.nama_item,
+    // PENTING: field ini SENGAJA dibuat terpisah dari `uraian_kegiatan` di
+    // atas. Di dalam loop {#rincian} docxtemplater, key `uraian_kegiatan`
+    // pada tiap baris MENIMPA (shadow) `uraian_kegiatan` di level atas
+    // (uraian aktivitas lengkap dari form Pengajuan Belanja) dengan nama
+    // item rincian saja (mis. "Kue Kotak") -- itu sebabnya baris "Belanja"
+    // di tabel Nota Dinas sempat salah menampilkan nama item, bukan uraian
+    // kegiatan lengkap. Template Nota Dinas HARUS pakai tag ini, bukan
+    // {uraian_kegiatan}, di baris "Belanja {jenis_belanja} {...}".
+    uraian_kegiatan_lengkap: pengajuan.uraian_kegiatan,
     rincian_belanja: r.nama_item, // alias -- dipakai di template sesuai lampiran contoh
     jumlah_pengajuan: formatRupiah(r.subtotal),
     realisasi: formatRupiah(r.subtotal), // alias -- kolom "Ajuan Skrg" per baris rincian

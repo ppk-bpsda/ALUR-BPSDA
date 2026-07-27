@@ -381,6 +381,8 @@ export default function PengajuanForm({
   const [alasanPaksaPph22, setAlasanPaksaPph22] = useState("");
   const [hargaTermasukPpn, setHargaTermasukPpn] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingKelompokFix, setSavingKelompokFix] = useState(false);
+  const [kelompokFixError, setKelompokFixError] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   // Combobox pencarian Rekening/DPA (lihat labelRekening/haystackRekening di
@@ -604,6 +606,39 @@ export default function PengajuanForm({
   function updatePotongan(i: number, patch: Partial<Potongan>) {
     setPotongan((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
+  const PILIHAN_KELOMPOK_BELANJA = ["Belanja Barang/Jasa", "Belanja Modal"];
+
+  // Data rekening lama (dibuat sebelum aturan "Jenis Rek. cuma 2 pilihan")
+  // masih bisa berisi nilai lain seperti "Belanja Operasi" -- daripada
+  // menyuruh pegawai balik ke halaman admin Rekening & Pagu satu-satu,
+  // tampilkan koreksi cepat langsung di sini (lihat app/api/rekening/[id]/
+  // kelompok-belanja/route.ts).
+  async function handleFixKelompokBelanja(value: string) {
+    if (!dpaTerpilih?.rekening_id) return;
+    setSavingKelompokFix(true);
+    setKelompokFixError("");
+    try {
+      const res = await fetch(`/api/rekening/${dpaTerpilih.rekening_id}/kelompok-belanja`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kelompok_belanja: value }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Gagal menyimpan");
+      }
+      // Perbarui data lokal supaya UI langsung mencerminkan nilai baru
+      // tanpa perlu reload/query ulang.
+      setDpaOptions((prev: any[]) =>
+        prev.map((d) => (d.id === dpaId ? { ...d, rekening: { ...d.rekening, kelompok_belanja: value } } : d))
+      );
+    } catch (err: any) {
+      setKelompokFixError(err.message || "Gagal menyimpan");
+    } finally {
+      setSavingKelompokFix(false);
+    }
+  }
+
   function handleHitungOtomatis() {
     // Lewat E-Katalog di bawah Rp2 juta -- pajak sudah ditangani sistem
     // Katalog, jangan hitung/tambahkan potongan apa pun di sini (poin 4).
@@ -809,24 +844,51 @@ export default function PengajuanForm({
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1.5 block">Nomor Nota Dinas</label>
-            <input
-              type="text"
-              value={nomorNotaDinas}
-              onChange={(e) => setNomorNotaDinas(e.target.value)}
-              placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/___/35.79.121/${periode?.tahun ?? "2026"}`}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">Diisi manual sesuai buku agenda surat keluar.</p>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={nomorNotaDinas}
+                onChange={(e) => setNomorNotaDinas(e.target.value)}
+                placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
+              />
+              <button
+                type="button"
+                title="Isi format baku dengan spasi kosong yang cukup untuk nomor urut -- tinggal ketik nomornya di tengah"
+                onClick={() =>
+                  setNomorNotaDinas(`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`)
+                }
+                className="shrink-0 text-xs text-slate-500 border border-slate-200 rounded-lg px-2.5 hover:bg-slate-50"
+              >
+                Isi Format
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Diisi manual sesuai buku agenda surat keluar. Klik "Isi Format" untuk format baku dengan spasi kosong
+              yang cukup untuk nomor urut, mis. "934/              /35.79.121/2026".
+            </p>
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1.5 block">Nomor Bukti (Kwitansi)</label>
-            <input
-              type="text"
-              value={nomorBukti}
-              onChange={(e) => setNomorBukti(e.target.value)}
-              placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/___/35.79.121/${periode?.tahun ?? "2026"}`}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
-            />
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={nomorBukti}
+                onChange={(e) => setNomorBukti(e.target.value)}
+                placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`}
+                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
+              />
+              <button
+                type="button"
+                title="Isi format baku dengan spasi kosong yang cukup untuk nomor urut -- tinggal ketik nomornya di tengah"
+                onClick={() =>
+                  setNomorBukti(`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`)
+                }
+                className="shrink-0 text-xs text-slate-500 border border-slate-200 rounded-lg px-2.5 hover:bg-slate-50"
+              >
+                Isi Format
+              </button>
+            </div>
             <p className="text-[11px] text-slate-400 mt-1">Diisi manual, boleh sama dengan Nomor Nota Dinas.</p>
           </div>
         </div>
@@ -846,7 +908,35 @@ export default function PengajuanForm({
               <p><span className="text-slate-400">Sub Kegiatan:</span> {dpaTerpilih.rekening?.sub_kegiatan?.nama_sub_kegiatan || "-"}</p>
               <p><span className="text-slate-400">Kode Rekening:</span> {dpaTerpilih.rekening?.kode_rekening || "-"}</p>
               <p><span className="text-slate-400">Kode Rekening Belanja:</span> {kodeRekeningBelanja(dpaTerpilih.rekening?.kode_rekening)}</p>
-              <p><span className="text-slate-400">Jenis Belanja:</span> {dpaTerpilih.rekening?.kelompok_belanja || "-"}</p>
+              <div>
+                <span className="text-slate-400">Jenis Rek. (Nota Dinas):</span>{" "}
+                {PILIHAN_KELOMPOK_BELANJA.includes(dpaTerpilih.rekening?.kelompok_belanja) ? (
+                  dpaTerpilih.rekening?.kelompok_belanja
+                ) : (
+                  <span className="inline-flex flex-wrap items-center gap-1.5 align-middle">
+                    <span className="text-amber-600">
+                      "{dpaTerpilih.rekening?.kelompok_belanja || "(kosong)"}" -- data lama, bukan salah satu dari 2 pilihan baku.
+                    </span>
+                    <select
+                      defaultValue=""
+                      disabled={savingKelompokFix}
+                      onChange={(e) => e.target.value && handleFixKelompokBelanja(e.target.value)}
+                      className="text-[11px] border border-amber-300 rounded px-1.5 py-0.5 outline-none bg-white"
+                    >
+                      <option value="" disabled>
+                        -- betulkan jadi --
+                      </option>
+                      {PILIHAN_KELOMPOK_BELANJA.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    {savingKelompokFix && <span className="text-slate-400">Menyimpan...</span>}
+                    {kelompokFixError && <span className="text-rose-600">{kelompokFixError}</span>}
+                  </span>
+                )}
+              </div>
               <p><span className="text-slate-400">Sumber Dana:</span> {dpaTerpilih.rekening?.sumber_dana || "-"}</p>
               <p><span className="text-slate-400">PPTK:</span> {dpaTerpilih.pptk?.nama || "-- belum ditentukan di Rekening & Pagu --"}</p>
               <p><span className="text-slate-400">Pagu:</span> Rp {Number(dpaTerpilih.pagu_anggaran || 0).toLocaleString("id-ID")}</p>
