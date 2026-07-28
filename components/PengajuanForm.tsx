@@ -63,7 +63,7 @@ type Rincian = {
 // 20260726020000_tambah_tipe_potongan_pajak.sql & pembaruan sistem
 // pajak Katalog Elektronik LKPP per 16 Juli 2025).
 type Potongan = { jenis_pajak: string; persentase: number; nominal: number; tipe?: "potongan" | "tambahan" };
-type JenisPengadaan = "barang" | "jasa_umum" | "jasa_boga_hotel";
+type JenisPengadaan = "barang" | "jasa_umum" | "jasa_boga_hotel" | "perjalanan_dinas";
 type BentukUsaha = "badan_usaha" | "perseorangan";
 
 // ---------------------------------------------------------
@@ -170,6 +170,33 @@ function hitungPajakOtomatis({
   if (totalBelanja <= 0) return { hasil: [], catatan: [] };
   const catatan: string[] = [];
 
+  // Belanja Perjalanan Dinas (SPPD): pembayaran uang harian/transport/
+  // penginapan LANGSUNG kepada ASN/pelaksana perjalanan dinas berdasarkan
+  // Surat Perintah Tugas & SPPD -- BUKAN pembayaran ke penyedia barang/jasa
+  // (badan usaha/perseorangan sebagai rekanan), jadi BUKAN objek pemungutan
+  // PPN/PPh 21/22/23 oleh Bendahara (acuan: Permendagri 21/2011 jo. Perpres
+  // 33/2020 ttg SBM, & PMK 113/PMK.05/2012 ttg perjalanan dinas dalam
+  // negeri bagi pejabat/pegawai negeri). Dasar & bukti dukungnya juga beda
+  // dari pengadaan barang/jasa -- pakai Surat Tugas, SPPD, rincian biaya
+  // riil (at cost: transport & penginapan) / lumpsum (uang harian/uang
+  // representasi) sesuai SBM, BUKAN nota/faktur dari penyedia. Kalau ada
+  // komponen di dalamnya yang sebenarnya pengadaan jasa dari pihak ketiga
+  // (mis. sewa kendaraan dari rental, tiket dari agen resmi bukan lumpsum),
+  // itu dicatat sebagai pengajuan TERPISAH dengan jenis pengadaan yang
+  // sesuai (Barang/Jasa Umum), bukan digabung ke sini.
+  if (jenisPengadaan === "perjalanan_dinas") {
+    catatan.push(
+      "Belanja Perjalanan Dinas (SPPD) -- dibayarkan langsung kepada ASN/pelaksana perjalanan dinas " +
+        "berdasarkan Surat Tugas & SPPD, BUKAN pembayaran ke penyedia barang/jasa, sehingga TIDAK dipungut " +
+        "PPN/PPh 21/22/23 oleh Bendahara (Permendagri 21/2011 jo. Perpres 33/2020 tentang Standar Biaya, & " +
+        "PMK 113/PMK.05/2012). Uang harian/representasi bersifat lumpsum sesuai Standar Biaya Masukan (SBM); " +
+        "transport & penginapan bisa at cost (bukti riil) sesuai ketentuan yang berlaku. Kuitansi/SPP-SPTJB " +
+        "untuk jenis belanja ini memakai SPPD & rincian biaya perjalanan sebagai bukti dukung, BUKAN nota/" +
+        "faktur penyedia."
+    );
+    return { hasil: [], catatan };
+  }
+
   // Jasa boga/katering & hotel: DIKECUALIKAN dari PPN (Pasal 4A UU PPN jo.
   // PMK 70/2022 -- karena sudah jadi objek Pajak Daerah/PBJT Makanan-
   // Minuman, untuk hindari pajak berganda), TAPI TETAP kena PPh 23 (badan)
@@ -192,26 +219,33 @@ function hitungPajakOtomatis({
         nominal: Math.round(totalBelanja - dppInfo),
       },
     ];
+    // PENTING: dasar pengenaan PPh (Final UMKM/21/23) untuk jasa boga/
+    // katering/hotel HARUS dppInfo (= 100/110 x realisasi), BUKAN
+    // totalBelanja mentah -- karena totalBelanja sudah mengandung 10%
+    // Pajak Daerah Restoran/Hotel yang bukan objek PPh. Rumus PPh 23:
+    // 100/110 x realisasi x 2% (lihat baris Pajak Daerah 10% di atas).
+    // Sebelumnya kode ini keliru memakai totalBelanja (belum dikurangi
+    // Pajak Daerah) sebagai DPP -- dibetulkan di sini.
     if (pakaiPphFinal) {
       hasilBoga.push({
         jenis_pajak: "PPh Final UMKM (PP 23/2018) 0,5%",
         persentase: 0.5,
-        nominal: Math.round(totalBelanja * TARIF.pphFinalUmkm),
+        nominal: Math.round(dppInfo * TARIF.pphFinalUmkm),
       });
     } else if (bentukUsaha === "perseorangan") {
-      const dppPph21 = totalBelanja * 0.5;
+      const dppPph21 = dppInfo * 0.5;
       const tarif = adaNpwp ? TARIF.pph21BukanPegawaiLapisan1 : TARIF.pph21BukanPegawaiLapisan1 * 1.2;
       hasilBoga.push({
-        jenis_pajak: `PPh 21 Bukan Pegawai ${adaNpwp ? "5%" : "6% (tanpa NPWP)"} x 50% bruto`,
+        jenis_pajak: `PPh 21 Bukan Pegawai ${adaNpwp ? "5%" : "6% (tanpa NPWP)"} x 50% bruto (dasar: 100/110 x realisasi)`,
         persentase: tarif * 100,
         nominal: Math.round(dppPph21 * tarif),
       });
     } else {
       const tarif = adaNpwp ? TARIF.pph23 : TARIF.pph23TanpaNpwp;
       hasilBoga.push({
-        jenis_pajak: `PPh 23 ${adaNpwp ? "2%" : "4% (tanpa NPWP)"}`,
+        jenis_pajak: `PPh 23 ${adaNpwp ? "2%" : "4% (tanpa NPWP)"} x 100/110 x realisasi`,
         persentase: tarif * 100,
-        nominal: Math.round(totalBelanja * tarif),
+        nominal: Math.round(dppInfo * tarif),
       });
     }
     return { hasil: hasilBoga, catatan };
@@ -1112,6 +1146,7 @@ export default function PengajuanForm({
               <option value="barang">Barang</option>
               <option value="jasa_umum">Jasa Umum</option>
               <option value="jasa_boga_hotel">Jasa Boga/Katering/Hotel</option>
+              <option value="perjalanan_dinas">Perjalanan Dinas (SPPD -- tidak kena PPN/PPh)</option>
             </select>
           </div>
           <label className="flex items-center gap-1.5 text-xs text-slate-600 pb-2">

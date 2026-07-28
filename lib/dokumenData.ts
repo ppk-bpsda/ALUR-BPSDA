@@ -159,14 +159,43 @@ export async function buildDokumenData(pengajuanId: string) {
     realisasi: formatRupiah(r.subtotal), // alias -- kolom "Ajuan Skrg" per baris rincian
   }));
 
-  // Potongan pajak -- daftar DINAMIS (bukan 4 slot tetap seperti versi
-  // lama), supaya selalu konsisten dengan apapun yang dihasilkan
-  // kalkulator pajak di form Pengajuan Belanja (PPN, PPh 22/23, PPh
-  // Final UMKM, Pajak Daerah, atau potongan manual dengan label bebas).
-  const potongan = (potonganRows ?? []).map((p: any) => ({
-    jenis_pajak: p.tipe === "tambahan" ? `${p.jenis_pajak} (tambahan)` : p.jenis_pajak,
-    nominal: formatRupiah(p.nominal),
-  }));
+  // Potongan pajak -- SLOT TETAP sesuai format baku Kwitansi GU (lampiran
+  // fisik): PPN, Pajak Daerah 10%, PPh 21 0,5%, PPh 21 2,5%, PPh 22 1,5%,
+  // PPh 23 2%. SEMUA baris SELALU dicetak, diisi Rp 0 kalau jenis pajak
+  // itu tidak relevan untuk paket belanja/nominal realisasi pengajuan ini
+  // -- bukan disembunyikan/dihilangkan seperti versi daftar dinamis
+  // sebelumnya. Dicocokkan ke hasil kalkulator pajak (potongan_pajak) lewat
+  // PERSENTASE (bukan teks label, supaya tidak meleset kalau labelnya
+  // sedikit berbeda -- mis. "PPh Final UMKM 0,5%" tetap masuk slot
+  // "PPh 21 0,5%" karena sama-sama tarif 0,5%). Kalau ada baris potongan
+  // dengan tarif di luar 6 slot ini (mis. PPh 22/23 tanpa NPWP, PPh 21
+  // Bukan Pegawai 5%/6%, dsb), TIDAK hilang -- ditampilkan di daftar
+  // tambahan `potongan_lainnya` di bawah 6 baris tetap tsb.
+  const sudahDipetakan = new Set<number>();
+  const jumlahByPersentase = (target: number, toleransi = 0.01) => {
+    let total = 0;
+    (potonganRows ?? []).forEach((p: any, idx: number) => {
+      if (sudahDipetakan.has(idx)) return;
+      const pct = Number(p.persentase ?? 0);
+      if (Math.abs(pct - target) <= toleransi) {
+        total += Number(p.nominal || 0);
+        sudahDipetakan.add(idx);
+      }
+    });
+    return total;
+  };
+  const potongan_ppn = jumlahByPersentase(11) + jumlahByPersentase(12);
+  const potongan_pajak_daerah = jumlahByPersentase(10);
+  const potongan_pph21_05 = jumlahByPersentase(0.5);
+  const potongan_pph21_25 = jumlahByPersentase(2.5);
+  const potongan_pph22_15 = jumlahByPersentase(1.5);
+  const potongan_pph23_2 = jumlahByPersentase(2);
+  const potongan_lainnya = (potonganRows ?? [])
+    .filter((_: any, idx: number) => !sudahDipetakan.has(idx))
+    .map((p: any) => ({
+      jenis_pajak: p.tipe === "tambahan" ? `${p.jenis_pajak} (tambahan)` : p.jenis_pajak,
+      nominal: formatRupiah(p.nominal),
+    }));
   // `jumlah_pengajuan` sudah mencakup potongan bertipe 'tambahan' (PPN
   // atas harga netto -- lihat perhitungan di app/api/pengajuan/route.ts
   // & [id]/route.ts), jadi di sini HANYA potongan yang MENGURANGI
@@ -246,7 +275,13 @@ export async function buildDokumenData(pengajuanId: string) {
     jumlah_uang: formatRupiah(pengajuan.jumlah_pengajuan),
     jumlah_uang_terbilang: terbilang(Number(pengajuan.jumlah_pengajuan)),
 
-    potongan,
+    potongan_ppn: formatRupiah(potongan_ppn),
+    potongan_pajak_daerah: formatRupiah(potongan_pajak_daerah),
+    potongan_pph21_05: formatRupiah(potongan_pph21_05),
+    potongan_pph21_25: formatRupiah(potongan_pph21_25),
+    potongan_pph22_15: formatRupiah(potongan_pph22_15),
+    potongan_pph23_2: formatRupiah(potongan_pph23_2),
+    potongan_lainnya,
     total_potongan: formatRupiah(totalPotongan),
     jumlah_diterima: formatRupiah(jumlahDiterima),
 

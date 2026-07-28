@@ -295,14 +295,14 @@ function KwitansiGu({ d }: { d: any }) {
       <p className="font-bold mb-1">Potongan</p>
       <table className="w-full mb-1">
         <tbody>
-          {(d.potongan ?? []).length === 0 && (
-            <tr>
-              <td className="w-40 py-0.5">-- Tidak ada potongan --</td>
-              <td className="w-4 py-0.5"></td>
-              <td className="py-0.5"></td>
-            </tr>
-          )}
-          {(d.potongan ?? []).map((p: any, i: number) => (
+          {/* 6 slot tetap sesuai lampiran Kwitansi GU -- selalu tampil, Rp 0 kalau tidak relevan */}
+          <Baris label="PPN" value={`Rp. ${d.potongan_ppn}`} />
+          <Baris label="Pajak Daerah 10%" value={`Rp. ${d.potongan_pajak_daerah}`} />
+          <Baris label="PPh 21 0,5%" value={`Rp. ${d.potongan_pph21_05}`} />
+          <Baris label="PPh 21 2,5%" value={`Rp. ${d.potongan_pph21_25}`} />
+          <Baris label="PPh 22 1,5%" value={`Rp. ${d.potongan_pph22_15}`} />
+          <Baris label="PPh 23 2%" value={`Rp. ${d.potongan_pph23_2}`} />
+          {(d.potongan_lainnya ?? []).map((p: any, i: number) => (
             <Baris key={i} label={p.jenis_pajak} value={`Rp. ${p.nominal}`} />
           ))}
           <Baris label={<b>Jumlah Potongan</b>} value={<b>Rp. {d.total_potongan}</b>} />
