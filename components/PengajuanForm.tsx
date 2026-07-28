@@ -1306,13 +1306,23 @@ export default function PengajuanForm({
         })()}
       </div>
 
-      <button
-        onClick={handleSubmit}
-        disabled={saving}
-        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg px-5 py-2.5"
-      >
-        {saving ? "Menyimpan..." : mode === "edit" ? "Simpan Perubahan" : "Simpan Pengajuan"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSubmit}
+          disabled={saving}
+          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg px-5 py-2.5"
+        >
+          {saving ? "Menyimpan..." : mode === "edit" ? "Simpan Perubahan" : "Simpan Pengajuan"}
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/pengajuan")}
+          disabled={saving}
+          className="bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-700 text-sm font-medium rounded-lg px-5 py-2.5 border border-slate-300"
+        >
+          Kembali / Batal
+        </button>
+      </div>
     </div>
   );
 }

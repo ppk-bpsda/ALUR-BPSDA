@@ -45,14 +45,21 @@ export default async function DokumenPreviewPage({
           body { background: white !important; }
           .doc-sheet { box-shadow: none !important; margin: 0 !important; }
         }
-        /* Kiri 3cm, kanan 2cm, atas 1,5cm, bawah 2cm -- sama seperti margin
-           di template .docx (lihat templates/Template_*.docx). */
-        @page { size: A4; margin: 15mm 20mm 20mm 30mm; }
+        /* Atas 1,5cm, kiri 3cm, bawah 2cm, kanan 2,5cm -- sesuai ketentuan
+           margin dokumen (dan sama dengan template .docx di templates/). */
+        @page { size: A4; margin: 15mm 25mm 20mm 30mm; }
+        .doc-sheet table { table-layout: auto; width: 100%; }
+        .doc-sheet td, .doc-sheet th { word-break: break-word; }
       `}</style>
 
       <div
-        className="doc-sheet max-w-[210mm] mx-auto my-6 bg-white shadow-md text-[13.3px] leading-relaxed text-slate-900"
-        style={{ fontFamily: "Arial, Helvetica, sans-serif", padding: "15mm 20mm 20mm 30mm" }}
+        className="doc-sheet max-w-[210mm] mx-auto my-6 bg-white shadow-md text-slate-900"
+        style={{
+          fontFamily: "Arial, Helvetica, sans-serif",
+          fontSize: "11pt",
+          lineHeight: 1.25,
+          padding: "15mm 25mm 20mm 30mm",
+        }}
       >
         {params.jenis === "nota_dinas" && <NotaDinas d={d} />}
         {params.jenis === "spp_sptjb" && <SppSptjb d={d} />}
@@ -140,15 +147,13 @@ function NotaDinas({ d }: { d: any }) {
               Rincian sebagai berikut:
             </td>
           </tr>
-          {(d.rincian ?? []).map((r: any, i: number) => (
-            <tr key={i}>
-              <td className="border border-slate-400 px-2 py-1"></td>
-              <td className="border border-slate-400 px-2 py-1" colSpan={6}>
-                Belanja {d.jenis_belanja} -- {r.uraian_kegiatan}
-              </td>
-              <td className="border border-slate-400 px-2 py-1 text-right" colSpan={2}>{r.jumlah_pengajuan}</td>
-            </tr>
-          ))}
+          <tr>
+            <td className="border border-slate-400 px-2 py-1"></td>
+            <td className="border border-slate-400 px-2 py-1" colSpan={6}>
+              Belanja {d.jenis_belanja} {d.uraian_kegiatan_lengkap}
+            </td>
+            <td className="border border-slate-400 px-2 py-1 text-right" colSpan={2}>{d.jumlah_pengajuan}</td>
+          </tr>
           <tr>
             <td className="border border-slate-400 px-2 py-1"></td>
             <td className="border border-slate-400 px-2 py-1 font-bold" colSpan={6}>TOTAL PENGAJUAN</td>
@@ -161,8 +166,7 @@ function NotaDinas({ d }: { d: any }) {
 
       <div className="flex justify-end">
         <div className="text-left w-64">
-          <p>Batu, {d.tanggal_surat}</p>
-          <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
+          <p className="font-semibold">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
           <div className="h-16" />
           <p className="font-medium">{d.nama_pptk}.</p>
           <p>NIP. {d.nip_pptk}</p>
@@ -187,7 +191,7 @@ function SppSptjb({ d }: { d: any }) {
           <Baris label="NIP" value={d.nip_pptk} noWidth />
           <Baris
             label="Jabatan"
-            value={`Pejabat Pelaksana Teknis Kegiatan ${d.nama_sub_kegiatan} berdasarkan SK Kuasa Pengguna Anggaran Nomor: ${d.nomor_sk_kpa} tentang Penunjukan Penanggung Jawab Pengelola Keuangan Pada ${d.nama_skpd} Tahun Anggaran ${d.tahun_anggaran}.`}
+            value={`Pejabat Pelaksana Teknis Kegiatan ${d.nama_kegiatan} berdasarkan SK Kuasa Pengguna Anggaran Nomor: ${d.nomor_sk_kpa} tentang Penunjukan Penanggung Jawab Pengelola Keuangan Pada ${d.nama_skpd} Tahun Anggaran ${d.tahun_anggaran}.`}
             noWidth
           />
         </tbody>
@@ -202,11 +206,11 @@ function SppSptjb({ d }: { d: any }) {
 
       <ol className="list-decimal pl-5 space-y-2 mb-6 text-justify">
         <li>
-          Jumlah pembelanjaan tersebut di atas benar-benar dipergunakan sesuai DPA {d.tahapan_dpa}-SKPD, untuk
+          Jumlah pembelanjaan tersebut di atas benar-benar dipergunakan sesuai DPA {d.tahapan_dpa} {d.nama_skpd}, untuk
           keperluan {d.jenis_belanja} Kode Rekening {d.kode_rekening_lengkap}.
         </li>
         <li>
-          Pembelanjaan tersebut benar-benar dipergunakan untuk pelaksanaan Kegiatan {d.nama_kegiatan} Sub
+          Pembelanjaan tersebut benar-benar dipergunakan untuk Kegiatan {d.nama_kegiatan} Sub
           Kegiatan {d.nama_sub_kegiatan}.
         </li>
         <li>Bertanggung jawab atas pembelanjaan yang terjadi.</li>
@@ -219,8 +223,7 @@ function SppSptjb({ d }: { d: any }) {
 
       <div className="flex justify-end">
         <div className="text-left w-64">
-          <p>Batu, {d.tanggal_surat}</p>
-          <p className="font-semibold mt-1">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
+          <p className="font-semibold">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
           <div className="h-16" />
           <p className="font-medium">{d.nama_pptk}</p>
           <p>NIP. {d.nip_pptk}</p>
