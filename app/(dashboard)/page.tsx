@@ -131,7 +131,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     )
     .eq("dpa.tahun_anggaran", tahun)
     .eq("dpa.tahapan", tahapan)
-    .in("status", ["disetujui", "dicairkan"]);
+    .eq("status", "dicairkan");
 
   type LaporanRow = { key: string; pagu: number; realisasi: number };
   const laporanRows = new Map<string, LaporanRow>();
