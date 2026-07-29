@@ -123,8 +123,22 @@ begin
       continue;
     end if;
 
-    select pp.id into v_pptk_id from pptk pp
-      where pp.sub_kegiatan_id = v_sub_id and pp.tahun_anggaran = 2026 limit 1;
+    -- Tabel `pptk` lama sudah dihapus (lihat migrasi 20260715000002_feature_updates.sql)
+    -- -- penugasan PPTK sekarang melekat langsung di dpa.pptk_id per baris
+    -- rekening (diisi manual lewat menu Rekening & Pagu, lihat migrasi
+    -- 20260717030000_dedup_pptk_add_judul_sk.sql), BUKAN lagi lewat
+    -- pejabat_skpd.sub_kegiatan_id yang sudah tidak dipakai sebagai acuan
+    -- penugasan. Jadi untuk baris DPA baru yang dibuat migrasi ini, PPTK-nya
+    -- disamakan dengan PPTK yang sudah dipakai baris DPA lain pada sub
+    -- kegiatan yang sama (2026) -- supaya konsisten dengan penugasan yang
+    -- sudah ada, bukan menebak dari tabel yang sudah tidak relevan.
+    select d0.pptk_id into v_pptk_id
+      from dpa d0
+      join rekening_belanja rb0 on rb0.id = d0.rekening_id
+      where rb0.sub_kegiatan_id = v_sub_id
+        and d0.tahun_anggaran = 2026
+        and d0.pptk_id is not null
+      limit 1;
 
     v_target_kode := rec.sub_kode || '.' || rec.rek_kode;
 
