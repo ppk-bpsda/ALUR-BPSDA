@@ -27,6 +27,15 @@ const NAMA_BULAN = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
+const STATUS_URUTAN = ["draft", "diajukan", "disetujui", "dicairkan", "ditolak"] as const;
+const statusLabel: Record<string, string> = {
+  draft: "Draft",
+  diajukan: "Diajukan",
+  disetujui: "Disetujui",
+  dicairkan: "Dicairkan",
+  ditolak: "Ditolak",
+};
+
 export default async function DashboardPage({ searchParams }: { searchParams: { laporan?: string } }) {
   const { tahun, tahapan } = getPeriode();
   const supabase = createClient();
@@ -47,6 +56,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
     .eq("dpa.tahapan", tahapan)
     .order("created_at", { ascending: false })
     .limit(8);
+
+  const { data: pengajuanStatusRows } = await supabase
+    .from("pengajuan_belanja")
+    .select("status, dpa:dpa!inner(tahun_anggaran, tahapan)")
+    .eq("dpa.tahun_anggaran", tahun)
+    .eq("dpa.tahapan", tahapan);
+
+  const statusCount: Record<string, number> = {};
+  for (const s of STATUS_URUTAN) statusCount[s] = 0;
+  for (const row of pengajuanStatusRows ?? []) {
+    const st = (row as any).status as string;
+    if (statusCount[st] !== undefined) statusCount[st]++;
+    else statusCount[st] = (statusCount[st] ?? 0) + 1;
+  }
+  const totalPengajuan = (pengajuanStatusRows ?? []).length;
 
   const bulanIni = new Date();
   const { count: pengajuanBulanIni } = await supabase
@@ -160,7 +184,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="p-5 pb-3">
-          <p className="text-sm font-medium text-slate-900">Pengajuan Terbaru</p>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm font-medium text-slate-900">Pengajuan Terbaru</p>
+            <div className="flex items-center flex-wrap gap-2">
+              <span className="text-xs text-slate-400">
+                Total {totalPengajuan} pengajuan
+              </span>
+              {STATUS_URUTAN.map((s) => (
+                <span
+                  key={s}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset ${statusStyle[s]}`}
+                >
+                  {statusLabel[s]}
+                  <span className="font-semibold">{statusCount[s] ?? 0}</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
         <table className="w-full text-sm">
           <thead>
