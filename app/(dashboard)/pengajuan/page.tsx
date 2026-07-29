@@ -7,10 +7,22 @@ import GenerateButtons from "./GenerateButtons";
 import RowActions from "./RowActions";
 import StatusSelect from "./StatusSelect";
 
-export default async function PengajuanPage() {
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  diajukan: "Diajukan",
+  disetujui: "Disetujui",
+  dicairkan: "Dicairkan",
+  ditolak: "Ditolak",
+};
+
+export default async function PengajuanPage({ searchParams }: { searchParams: { status?: string } }) {
   const { tahun, tahapan } = getPeriode();
   const supabase = createClient();
-  const { data: list } = await supabase
+  const statusFilter = Object.keys(STATUS_LABEL).includes(searchParams.status || "")
+    ? (searchParams.status as string)
+    : undefined;
+
+  let query = supabase
     .from("pengajuan_belanja")
     .select(
       "id, nomor_bukti, metode_pembayaran, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa!inner(tahun_anggaran, tahapan, rekening:rekening_belanja(kode_rekening))"
@@ -18,6 +30,8 @@ export default async function PengajuanPage() {
     .eq("dpa.tahun_anggaran", tahun)
     .eq("dpa.tahapan", tahapan)
     .order("created_at", { ascending: false });
+  if (statusFilter) query = query.eq("status", statusFilter);
+  const { data: list } = await query;
 
   return (
     <div className="space-y-4">
@@ -26,6 +40,12 @@ export default async function PengajuanPage() {
           <h1 className="font-serif text-xl text-slate-900">Pengajuan Belanja</h1>
           <p className="text-sm text-slate-500">
             Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)} -- dicetak jadi dokumen dari sini.
+            {statusFilter && (
+              <>
+                {" "}Menampilkan status <span className="font-medium text-slate-700">{STATUS_LABEL[statusFilter]}</span>{" "}
+                <Link href="/pengajuan" className="text-emerald-700 hover:underline">(hapus filter)</Link>
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
