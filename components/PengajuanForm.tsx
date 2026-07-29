@@ -883,14 +883,14 @@ export default function PengajuanForm({
                 type="text"
                 value={nomorNotaDinas}
                 onChange={(e) => setNomorNotaDinas(e.target.value)}
-                placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`}
+                placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/          /35.79.121/${periode?.tahun ?? "2026"}`}
                 className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
               />
               <button
                 type="button"
                 title="Isi format baku dengan spasi kosong yang cukup untuk nomor urut -- tinggal ketik nomornya di tengah"
                 onClick={() =>
-                  setNomorNotaDinas(`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`)
+                  setNomorNotaDinas(`${metodePembayaran === "LS" ? "935" : "934"}/          /35.79.121/${periode?.tahun ?? "2026"}`)
                 }
                 className="shrink-0 text-xs text-slate-500 border border-slate-200 rounded-lg px-2.5 hover:bg-slate-50"
               >
@@ -899,7 +899,7 @@ export default function PengajuanForm({
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
               Diisi manual sesuai buku agenda surat keluar. Klik "Isi Format" untuk format baku dengan spasi kosong
-              yang cukup untuk nomor urut, mis. "934/              /35.79.121/2026".
+              yang cukup untuk nomor urut, mis. "934/          /35.79.121/2026".
             </p>
           </div>
           <div>
@@ -909,14 +909,14 @@ export default function PengajuanForm({
                 type="text"
                 value={nomorBukti}
                 onChange={(e) => setNomorBukti(e.target.value)}
-                placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`}
+                placeholder={`${metodePembayaran === "LS" ? "935" : "934"}/          /35.79.121/${periode?.tahun ?? "2026"}`}
                 className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none font-mono"
               />
               <button
                 type="button"
                 title="Isi format baku dengan spasi kosong yang cukup untuk nomor urut -- tinggal ketik nomornya di tengah"
                 onClick={() =>
-                  setNomorBukti(`${metodePembayaran === "LS" ? "935" : "934"}/              /35.79.121/${periode?.tahun ?? "2026"}`)
+                  setNomorBukti(`${metodePembayaran === "LS" ? "935" : "934"}/          /35.79.121/${periode?.tahun ?? "2026"}`)
                 }
                 className="shrink-0 text-xs text-slate-500 border border-slate-200 rounded-lg px-2.5 hover:bg-slate-50"
               >
@@ -1025,7 +1025,7 @@ export default function PengajuanForm({
             )}
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Penerima</label>
+            <label className="text-xs font-medium text-slate-600 mb-1.5 block">Penerima (opsional)</label>
             <input
               list="saran-penerima"
               value={namaPenerima}
@@ -1033,7 +1033,7 @@ export default function PengajuanForm({
                 setNamaPenerima(e.target.value);
                 setPenerimaDiubahManual(true);
               }}
-              placeholder="Ketik nama penerima"
+              placeholder="Ketik nama penerima (boleh dikosongkan)"
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none"
             />
             <datalist id="saran-penerima">
@@ -1043,6 +1043,8 @@ export default function PengajuanForm({
             </datalist>
             <p className="text-xs text-slate-400 mt-1">
               Otomatis terisi dari Nama Direktur/Penanggung Jawab saat memilih Penyedia -- bisa diketik ulang manual bila perlu.
+              Ini adalah opsi tambahan: kosongkan bila tidak diperlukan -- blok tanda tangan "Penerima" beserta tanggalnya
+              otomatis TIDAK dicetak pada Kuitansi apabila field ini dibiarkan kosong.
             </p>
           </div>
         </div>

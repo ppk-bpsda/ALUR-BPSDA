@@ -267,7 +267,11 @@ export async function buildDokumenData(pengajuanId: string) {
     pangkat_bendahara: bppRow?.pangkat || "",
     nip_bendahara: bppRow?.nip || "-",
 
-    nama_penerima: (pengajuan as any).nama_penerima || "-",
+    // Sengaja KOSONG (bukan "-") kalau belum diisi -- dipakai sebagai kondisi
+    // {#nama_penerima}...{/nama_penerima} di template Kwitansi GU supaya
+    // blok tanda tangan Penerima jadi OPSIONAL: otomatis tidak tercetak sama
+    // sekali kalau field Nama Penerima di form Pengajuan Belanja dikosongkan.
+    nama_penerima: (pengajuan as any).nama_penerima || "",
     nama_penyedia: (pengajuan as any).penyedia?.nama_penyedia || "",
 
     jumlah_pengajuan_angka: formatRupiah(pengajuan.jumlah_pengajuan),

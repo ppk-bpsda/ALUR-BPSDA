@@ -123,11 +123,8 @@ begin
       continue;
     end if;
 
-    select ps.id into v_pptk_id from pejabat_skpd ps
-      where ps.jabatan = 'PPTK'
-        and ps.sub_kegiatan_id = v_sub_id
-        and ps.tahun_anggaran = 2026
-      limit 1;
+    select pp.id into v_pptk_id from pptk pp
+      where pp.sub_kegiatan_id = v_sub_id and pp.tahun_anggaran = 2026 limit 1;
 
     v_target_kode := rec.sub_kode || '.' || rec.rek_kode;
 
