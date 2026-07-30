@@ -27,6 +27,41 @@ function haystackRekening(d: any) {
     .toLowerCase();
 }
 
+const TAHAPAN_LABEL_LOKAL: Record<string, string> = {
+  murni: "Murni",
+  pergeseran: "Pergeseran",
+  perubahan: "Perubahan",
+};
+
+// Realisasi TIDAK terikat tahapan, tapi PAGU-nya berubah tergantung tahapan
+// (Murni/Pergeseran/Perubahan bisa punya pagu berbeda untuk rekening yang
+// sama). Yang menentukan revisi DPA mana yang berlaku untuk satu transaksi
+// adalah TANGGAL transaksi itu sendiri dibandingkan tanggal DPA
+// Pergeseran/Perubahan DITETAPKAN (dpa.tanggal_penetapan) -- BUKAN periode
+// aktif yang sedang dipilih pegawai di menu Periode saat menginput. Contoh:
+// DPA Pergeseran ditetapkan 16 Maret 2026 -> transaksi bertanggal SEBELUM
+// itu tetap masuk tahapan Murni, walau diinput belakangan saat periode
+// aktif sudah Pergeseran; transaksi bertanggal 16 Maret 2026 atau
+// setelahnya masuk tahapan Pergeseran.
+function resolveDpaId(rekeningId: string, tanggal: string, dpaOptions: any[]): string {
+  if (!rekeningId) return "";
+  const rows = dpaOptions.filter((d: any) => d.rekening_id === rekeningId);
+  if (rows.length === 0) return "";
+  // DPA yang tanggal_penetapan-nya <= tanggal transaksi -- ambil yang
+  // tanggal_penetapan-nya PALING BARU di antaranya (revisi DPA terakhir
+  // yang sudah berlaku pada tanggal itu). Baris tanpa tanggal_penetapan
+  // (umumnya tahapan Murni) dianggap berlaku sejak awal tahun anggaran.
+  const berlaku = rows
+    .filter((d: any) => !d.tanggal_penetapan || d.tanggal_penetapan <= tanggal)
+    .sort((a: any, b: any) =>
+      String(b.tanggal_penetapan || "0000-00-00").localeCompare(String(a.tanggal_penetapan || "0000-00-00"))
+    );
+  if (berlaku.length > 0) return berlaku[0].id;
+  // Fallback kalau tanggal transaksi lebih awal dari semua tanggal_penetapan
+  // yang ada (jarang terjadi) -- pakai tahapan Murni kalau tersedia.
+  return rows.find((d: any) => d.tahapan === "murni")?.id ?? rows[0].id;
+}
+
 // `_totalNego` adalah field UI SAJA (diawali underscore, distrip sebelum
 // dikirim ke API/DB) -- cara alternatif mengisi harga_satuan: petugas
 // isi TOTAL yang disepakati saat negosiasi, sistem yang membagi ke
@@ -389,7 +424,7 @@ export default function PengajuanForm({
   const [sisaAnggaran, setSisaAnggaran] = useState<number | null>(null);
   const [loading, setLoading] = useState(mode === "edit");
 
-  const [dpaId, setDpaId] = useState("");
+  const [rekeningId, setRekeningId] = useState("");
   const [tanggal, setTanggal] = useState(() => new Date().toISOString().slice(0, 10));
   const [metodePembayaran, setMetodePembayaran] = useState<"LS" | "GU">("GU");
   const [nomorNotaDinas, setNomorNotaDinas] = useState("");
@@ -452,13 +487,12 @@ export default function PengajuanForm({
         const { data: existing } = await supabase
           .from("pengajuan_belanja")
           .select(
-            "id, dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima, metode_pembayaran, nomor_nota_dinas, nomor_bukti, dpa:dpa(tahun_anggaran, tahapan)"
+            "id, dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima, metode_pembayaran, nomor_nota_dinas, nomor_bukti, dpa:dpa(tahun_anggaran, tahapan, rekening_id)"
           )
           .eq("id", pengajuanId)
           .single();
 
         if (existing) {
-          setDpaId(existing.dpa_id);
           setTanggal(existing.tanggal);
           setUraian(existing.uraian_kegiatan);
           setPenyediaId(existing.penyedia_id ?? "");
@@ -470,14 +504,19 @@ export default function PengajuanForm({
 
           const dpaPeriode = existing.dpa as any;
           setPeriode({ tahun: dpaPeriode?.tahun_anggaran, tahapan: dpaPeriode?.tahapan });
+          setRekeningId(dpaPeriode?.rekening_id ?? "");
 
+          // Ambil SEMUA tahapan (Murni/Pergeseran/Perubahan) tahun yang sama --
+          // bukan cuma tahapan tempat pengajuan ini semula tersimpan -- supaya
+          // tahapan yang berlaku bisa dihitung ulang otomatis dari tanggal
+          // transaksi (lihat resolveDpaId), termasuk mengoreksi pengajuan lama
+          // yang dulu salah masuk tahapan gara-gara ikut periode aktif saat itu.
           const { data: dpa } = await supabase
             .from("dpa")
             .select(
-              "id, tahapan, pagu_anggaran, rekening_id, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
+              "id, tahapan, tanggal_penetapan, pagu_anggaran, rekening_id, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
             )
-            .eq("tahun_anggaran", dpaPeriode?.tahun_anggaran)
-            .eq("tahapan", dpaPeriode?.tahapan);
+            .eq("tahun_anggaran", dpaPeriode?.tahun_anggaran);
           setDpaOptions(dpa ?? []);
 
           const [{ data: rincianData }, { data: potonganData }] = await Promise.all([
@@ -490,24 +529,45 @@ export default function PengajuanForm({
         setLoading(false);
       } else {
         // Mode tambah: periode aktif (tahun+tahapan) disimpan di cookie
-        // httpOnly server, diambil lewat endpoint kecil ini.
+        // httpOnly server, diambil lewat endpoint kecil ini -- dipakai untuk
+        // format nomor dokumen & tampilan saja. Tahapan DPA yang benar-benar
+        // dipakai untuk pengajuan ini dihitung otomatis dari tanggal
+        // transaksi (lihat resolveDpaId), BUKAN diambil langsung dari sini.
         const periodeRes = await fetch("/api/periode-aktif").then((r) => r.json());
         setPeriode(periodeRes);
 
+        // Ambil rekening lintas SEMUA tahapan tahun berjalan (bukan cuma
+        // tahapan aktif) -- satu rekening bisa punya sampai 3 baris DPA
+        // (Murni/Pergeseran/Perubahan) dengan pagu berbeda-beda; tahapan
+        // mana yang dipakai untuk pengajuan ini ditentukan otomatis dari
+        // tanggal transaksi yang diisi, bukan dari periode aktif.
         const { data: dpa } = await supabase
           .from("dpa")
           .select(
-            "id, tahapan, pagu_anggaran, rekening_id, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
+            "id, tahapan, tanggal_penetapan, pagu_anggaran, rekening_id, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan, program:program(nama_program))))"
           )
-          .eq("tahun_anggaran", periodeRes.tahun)
-          .eq("tahapan", periodeRes.tahapan);
+          .eq("tahun_anggaran", periodeRes.tahun);
         setDpaOptions(dpa ?? []);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Tahapan DPA yang berlaku dihitung ULANG OTOMATIS setiap kali rekening
+  // atau tanggal transaksi berubah -- lihat resolveDpaId di atas.
+  const dpaId = useMemo(() => resolveDpaId(rekeningId, tanggal, dpaOptions), [rekeningId, tanggal, dpaOptions]);
   const dpaTerpilih = useMemo(() => dpaOptions.find((d: any) => d.id === dpaId), [dpaOptions, dpaId]);
+
+  // Satu rekening bisa punya sampai 3 baris di dpaOptions (Murni/Pergeseran/
+  // Perubahan) -- untuk kotak pencarian, tampilkan REKENING-nya saja
+  // (satu opsi per rekening_id, tahapannya ditentukan otomatis belakangan).
+  const rekeningUnik = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const d of dpaOptions) {
+      if (!map.has(d.rekening_id)) map.set(d.rekening_id, d);
+    }
+    return Array.from(map.values());
+  }, [dpaOptions]);
 
   // Rekening yang cocok dengan kata kunci pencarian -- kata kunci dipecah per
   // kata, dan SEMUA kata harus ketemu di gabungan kode rekening/kegiatan/sub
@@ -515,12 +575,12 @@ export default function PengajuanForm({
   // katanya beda dari nama rekening aslinya).
   const dpaOptionsTersaring = useMemo(() => {
     const kataKunci = rekeningQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (kataKunci.length === 0) return dpaOptions;
-    return dpaOptions.filter((d: any) => {
+    if (kataKunci.length === 0) return rekeningUnik;
+    return rekeningUnik.filter((d: any) => {
       const hay = haystackRekening(d);
       return kataKunci.every((k) => hay.includes(k));
     });
-  }, [dpaOptions, rekeningQuery]);
+  }, [rekeningUnik, rekeningQuery]);
 
   // Sinkronkan teks di kotak pencarian dengan rekening yang sedang dipilih --
   // hanya saat dropdown TERTUTUP, supaya tidak menimpa ketikan pegawai saat
@@ -782,8 +842,9 @@ export default function PengajuanForm({
         <p className="text-sm text-slate-500">
           Isi sekali di sini -- Nota Dinas, SPP/SPTJB, dan Kwitansi GU akan dibuat otomatis dari data yang sama.
           {periode && (
-            <> Daftar rekening di bawah mengikuti periode {mode === "edit" ? "milik pengajuan ini" : "aktif"}:
-              Tahun Anggaran {periode.tahun}, Tahapan {periode.tahapan}.</>
+            <> Tahun Anggaran {periode.tahun}. Tahapan DPA (Murni/Pergeseran/Perubahan) yang dipakai untuk
+              rekening yang dipilih dihitung OTOMATIS dari tanggal transaksi yang diisi -- bukan dari periode
+              aktif di menu Periode.</>
           )}
         </p>
       </div>
@@ -807,7 +868,7 @@ export default function PengajuanForm({
                 onChange={(e) => {
                   setRekeningQuery(e.target.value);
                   setRekeningOpen(true);
-                  if (dpaId) setDpaId(""); // ketikan baru berarti sedang cari ulang, bukan rekening yang sudah dipilih
+                  if (rekeningId) setRekeningId(""); // ketikan baru berarti sedang cari ulang, bukan rekening yang sudah dipilih
                 }}
                 onFocus={() => setRekeningOpen(true)}
                 placeholder="Cari kode rekening, kegiatan, atau sub kegiatan..."
@@ -822,14 +883,14 @@ export default function PengajuanForm({
                 {dpaOptionsTersaring.map((d: any) => (
                   <button
                     type="button"
-                    key={d.id}
+                    key={d.rekening_id}
                     onClick={() => {
-                      setDpaId(d.id);
+                      setRekeningId(d.rekening_id);
                       setRekeningQuery(labelRekening(d));
                       setRekeningOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b border-slate-50 last:border-0 ${
-                      d.id === dpaId ? "bg-emerald-50" : ""
+                      d.rekening_id === rekeningId ? "bg-emerald-50" : ""
                     }`}
                   >
                     <p className="font-mono text-slate-700">{d.rekening?.kode_rekening}</p>
@@ -850,6 +911,21 @@ export default function PengajuanForm({
               onChange={(e) => setTanggal(e.target.value)}
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none"
             />
+            {dpaTerpilih && (
+              <p className="text-[11px] text-slate-500 mt-1">
+                Tahapan DPA (otomatis sesuai tanggal): {" "}
+                <span className="font-medium text-slate-700">{TAHAPAN_LABEL_LOKAL[dpaTerpilih.tahapan] ?? dpaTerpilih.tahapan}</span>
+                {periode && dpaTerpilih.tahapan !== periode.tahapan && (
+                  <> -- berbeda dari periode aktif ({TAHAPAN_LABEL_LOKAL[periode.tahapan] ?? periode.tahapan}), itu wajar
+                    kalau tanggal transaksi ini masuk cakupan DPA tahap lain.</>
+                )}
+              </p>
+            )}
+            {rekeningId && !dpaTerpilih && (
+              <p className="text-[11px] text-rose-600 mt-1">
+                Belum ada DPA untuk rekening ini pada tanggal tersebut.
+              </p>
+            )}
           </div>
         </div>
 
