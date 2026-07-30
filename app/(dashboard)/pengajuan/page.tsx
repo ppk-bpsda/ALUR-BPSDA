@@ -72,6 +72,14 @@ export default async function PengajuanPage({
   if (sampaiFilter) query = query.lte("tanggal", sampaiFilter);
   const { data: list } = await query;
 
+  // Nominal Realisasi dari hasil filter yang sedang ditampilkan --
+  // konsisten dengan definisi Realisasi di Dashboard/rekap: hanya
+  // status "dicairkan" yang dihitung terealisasi secara kas.
+  const nominalRealisasi = (list ?? [])
+    .filter((row: any) => row.status === "dicairkan")
+    .reduce((s: number, row: any) => s + Number(row.jumlah_pengajuan || 0), 0);
+  const totalDitampilkan = (list ?? []).reduce((s: number, row: any) => s + Number(row.jumlah_pengajuan || 0), 0);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -108,6 +116,19 @@ export default async function PengajuanPage({
         subKegiatanList={subKegiatanList ?? []}
         rekeningList={rekeningList ?? []}
       />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-emerald-50/60 rounded-xl border border-emerald-200 p-4">
+          <p className="text-xs text-emerald-700/80">Nominal Realisasi (status Dicairkan)</p>
+          <p className="text-xl font-serif text-emerald-800 mt-1">Rp {formatRupiah(nominalRealisasi)}</p>
+          <p className="text-xs text-emerald-700/70 mt-1">dari hasil pencarian/filter saat ini</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <p className="text-xs text-slate-400">Total Ditampilkan (semua status)</p>
+          <p className="text-xl font-serif text-slate-800 mt-1">Rp {formatRupiah(totalDitampilkan)}</p>
+          <p className="text-xs text-slate-400 mt-1">{(list ?? []).length} baris pengajuan</p>
+        </div>
+      </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
         <table className="w-full text-sm min-w-[900px]">
