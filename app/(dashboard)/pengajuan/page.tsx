@@ -6,6 +6,7 @@ import { Plus, Upload } from "lucide-react";
 import GenerateButtons from "./GenerateButtons";
 import RowActions from "./RowActions";
 import StatusSelect from "./StatusSelect";
+import PengajuanFilter from "./PengajuanFilter";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -15,22 +16,60 @@ const STATUS_LABEL: Record<string, string> = {
   ditolak: "Ditolak",
 };
 
-export default async function PengajuanPage({ searchParams }: { searchParams: { status?: string } }) {
+export default async function PengajuanPage({
+  searchParams,
+}: {
+  searchParams: {
+    status?: string;
+    kegiatan?: string;
+    sub_kegiatan?: string;
+    rekening?: string;
+    dari?: string;
+    sampai?: string;
+  };
+}) {
   const { tahun, tahapan } = getPeriode();
   const supabase = createClient();
   const statusFilter = Object.keys(STATUS_LABEL).includes(searchParams.status || "")
     ? (searchParams.status as string)
     : undefined;
+  const kegiatanFilter = searchParams.kegiatan || undefined;
+  const subKegiatanFilter = searchParams.sub_kegiatan || undefined;
+  const rekeningFilter = searchParams.rekening || undefined;
+  const dariFilter = searchParams.dari || undefined;
+  const sampaiFilter = searchParams.sampai || undefined;
+
+  const [{ data: kegiatanList }, { data: subKegiatanList }, { data: rekeningList }] = await Promise.all([
+    supabase
+      .from("kegiatan")
+      .select("id, nama_kegiatan")
+      .eq("tahun_anggaran", tahun)
+      .order("kode_kegiatan"),
+    supabase
+      .from("sub_kegiatan")
+      .select("id, nama_sub_kegiatan, kegiatan_id")
+      .eq("tahun_anggaran", tahun)
+      .order("kode_sub_kegiatan"),
+    supabase
+      .from("rekening_belanja")
+      .select("id, jenis_belanja, sub_kegiatan_id")
+      .order("jenis_belanja"),
+  ]);
 
   let query = supabase
     .from("pengajuan_belanja")
     .select(
-      "id, nomor_bukti, metode_pembayaran, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa!inner(tahun_anggaran, tahapan, rekening:rekening_belanja(kode_rekening))"
+      "id, nomor_bukti, metode_pembayaran, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa!inner(tahun_anggaran, tahapan, rekening_id, rekening:rekening_belanja!inner(kode_rekening, sub_kegiatan_id, sub_kegiatan:sub_kegiatan!inner(kegiatan_id)))"
     )
     .eq("dpa.tahun_anggaran", tahun)
     .eq("dpa.tahapan", tahapan)
-    .order("created_at", { ascending: false });
+    .order("tanggal", { ascending: false });
   if (statusFilter) query = query.eq("status", statusFilter);
+  if (kegiatanFilter) query = query.eq("dpa.rekening.sub_kegiatan.kegiatan_id", kegiatanFilter);
+  if (subKegiatanFilter) query = query.eq("dpa.rekening.sub_kegiatan_id", subKegiatanFilter);
+  if (rekeningFilter) query = query.eq("dpa.rekening_id", rekeningFilter);
+  if (dariFilter) query = query.gte("tanggal", dariFilter);
+  if (sampaiFilter) query = query.lte("tanggal", sampaiFilter);
   const { data: list } = await query;
 
   return (
@@ -63,6 +102,12 @@ export default async function PengajuanPage({ searchParams }: { searchParams: { 
           </Link>
         </div>
       </div>
+
+      <PengajuanFilter
+        kegiatanList={kegiatanList ?? []}
+        subKegiatanList={subKegiatanList ?? []}
+        rekeningList={rekeningList ?? []}
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
         <table className="w-full text-sm min-w-[900px]">
