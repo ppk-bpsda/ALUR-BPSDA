@@ -19,8 +19,10 @@ const JUDUL: Record<string, string> = {
 
 export default async function DokumenPreviewPage({
   params,
+  searchParams,
 }: {
   params: { id: string; jenis: string };
+  searchParams: { orientasi?: string };
 }) {
   if (!JUDUL[params.jenis]) return notFound();
 
@@ -35,9 +37,23 @@ export default async function DokumenPreviewPage({
     );
   }
 
+  // Margin dokumen: atas 1,5cm / kiri 2,5cm / bawah 2cm / kanan 2cm --
+  // berlaku sama untuk pratinjau layar, cetak langsung ke printer, maupun
+  // "Save as PDF" (satu sumber CSS yang sama untuk ketiganya, supaya tidak
+  // ada selisih ukuran antar cara cetak).
+  const orientasi = searchParams.orientasi === "landscape" ? "landscape" : "portrait";
+  const isLandscape = orientasi === "landscape";
+  const marginCss = "15mm 20mm 20mm 25mm"; // top right bottom left
+  const lebarKertas = isLandscape ? "297mm" : "210mm";
+
   return (
     <div className="min-h-screen bg-slate-100">
-      <PrintToolbar pengajuanId={params.id} jenis={params.jenis} judul={`Pratinjau -- ${JUDUL[params.jenis]}`} />
+      <PrintToolbar
+        pengajuanId={params.id}
+        jenis={params.jenis}
+        judul={`Pratinjau -- ${JUDUL[params.jenis]}`}
+        orientasi={orientasi}
+      />
 
       <style>{`
         @media print {
@@ -45,20 +61,23 @@ export default async function DokumenPreviewPage({
           body { background: white !important; }
           .doc-sheet { box-shadow: none !important; margin: 0 !important; }
         }
-        /* Atas 1,5cm, kiri 3cm, bawah 2cm, kanan 2,5cm -- sesuai ketentuan
-           margin dokumen (dan sama dengan template .docx di templates/). */
-        @page { size: A4; margin: 15mm 25mm 20mm 30mm; }
+        /* Atas 1,5cm, kiri 2,5cm, bawah 2cm, kanan 2cm -- sama persis
+           dengan margin di template .docx (templates/) supaya hasil
+           Unduh Word dan hasil cetak/PDF dari sini tidak berselisih. */
+        @page { size: A4 ${orientasi}; margin: ${marginCss}; }
         .doc-sheet table { table-layout: auto; width: 100%; }
         .doc-sheet td, .doc-sheet th { word-break: break-word; }
       `}</style>
 
       <div
-        className="doc-sheet max-w-[210mm] mx-auto my-6 bg-white shadow-md text-slate-900"
+        className="doc-sheet mx-auto my-6 bg-white shadow-md text-slate-900"
         style={{
           fontFamily: "Arial, Helvetica, sans-serif",
           fontSize: "11pt",
           lineHeight: 1.25,
-          padding: "15mm 25mm 20mm 30mm",
+          padding: marginCss,
+          width: lebarKertas,
+          maxWidth: lebarKertas,
         }}
       >
         {params.jenis === "nota_dinas" && <NotaDinas d={d} />}
@@ -99,65 +118,59 @@ function NotaDinas({ d }: { d: any }) {
 
       <table className="w-full mb-4">
         <tbody>
-          <Baris label="Kepada" value={`Kuasa Pengguna Anggaran ${d.nama_skpd}`} />
-          <Baris label="Dari" value={`Pejabat Pelaksana Teknis Kegiatan ${d.nama_skpd}`} />
+          <Baris label="Kepada" value={`Kuasa Pengguna Anggaran ${d.skpd}`} />
+          <Baris label="Dari" value={`Pejabat Pelaksana Teknis Kegiatan ${d.skpd}`} />
           <Baris label="Hari/Tanggal" value={d.hari_tanggal} />
           <Baris label="Nomor" value={d.nomor_nota_dinas} />
           <Baris label="Sifat" value="Penting" />
           <Baris label="Lampiran" value="-" />
-          <Baris label="Perihal" value={`Pengajuan Pencairan ${d.jenis_pencairan}`} />
+          <Baris label="Perihal" value={`Pengajuan Pencairan ${d.metode_pembayaran}`} />
         </tbody>
       </table>
 
       <p className="mb-4 text-justify">
-        Bersama ini kami menyampaikan dengan hormat Pengajuan Pencairan Anggaran kegiatan pada {d.nama_skpd}{" "}
-        dengan rincian sebagai berikut:
+        Bersama ini kami menyampaikan dengan hormat Pengajuan Pencairan Anggaran kegiatan pada {d.skpd} dengan
+        rincian sebagai berikut :
       </p>
 
-      <table className="w-full border border-slate-400 border-collapse mb-4 text-xs">
+      {/* Tabel rincian PROGRAM/Kegiatan/Sub Kegiatan/dst -- format baru
+          sesuai lampiran (2 kolom berbingkai, tanpa tanda ':'). */}
+      <table className="w-full border border-slate-400 border-collapse mb-4 text-sm">
+        <tbody>
+          <RincianBaris label="PROGRAM" value={d.program} />
+          <RincianBaris label="Kegiatan" value={d.kegiatan} />
+          <RincianBaris label="Sub Kegiatan" value={d.sub_kegiatan} />
+          <RincianBaris label="Belanja" value={d.belanja} />
+          <RincianBaris label="Kode Rekening" value={d.kode_rekening_lengkap} />
+          <RincianBaris label="Jenis Belanja" value={d.jenis_belanja} />
+          <RincianBaris label="Rincian Belanja" value={d.uraian_belanja_lengkap} />
+        </tbody>
+      </table>
+
+      <table className="w-full border border-slate-400 border-collapse mb-4 text-sm">
         <thead>
-          <tr className="bg-slate-50">
-            {["No", "Uraian", "Kode Rek.", "Jenis Belanja", "Sumber Dana", "Pagu", "Realisasi Sblm", "Ajuan Skrg", "Sisa"].map((h) => (
-              <th key={h} className="border border-slate-400 px-2 py-1 font-semibold">{h}</th>
-            ))}
+          <tr className="bg-slate-50 text-center font-semibold">
+            <th className="border border-slate-400 px-2 py-1.5">Sumber Dana</th>
+            <th className="border border-slate-400 px-2 py-1.5">Pagu</th>
+            <th className="border border-slate-400 px-2 py-1.5">Realisasi Sebelum</th>
+            <th className="border border-slate-400 px-2 py-1.5">Ajuan Sekarang</th>
+            <th className="border border-slate-400 px-2 py-1.5">Sisa</th>
           </tr>
         </thead>
         <tbody>
+          <tr className="text-center">
+            <td className="border border-slate-400 px-2 py-1.5">{d.sumber_dana}</td>
+            <td className="border border-slate-400 px-2 py-1.5">{d.pagu}</td>
+            <td className="border border-slate-400 px-2 py-1.5">{d.realisasi_sblm}</td>
+            <td className="border border-slate-400 px-2 py-1.5">{d.ajuan_skrg}</td>
+            <td className="border border-slate-400 px-2 py-1.5">{d.sisa}</td>
+          </tr>
           <tr>
-            <td className="border border-slate-400 px-2 py-1 align-top" rowSpan={2}>1</td>
-            <td className="border border-slate-400 px-2 py-1 align-top" colSpan={8}>
-              <p className="font-semibold">{d.program_nama}</p>
-              <p>Kegiatan {d.kegiatan_nama}</p>
-              <p>Sub Kegiatan {d.sub_kegiatan_nama} ({d.kode_sub_kegiatan})</p>
+            <td className="border border-slate-400 px-2 py-1.5 font-bold text-center" colSpan={3}>
+              Total Pengajuan
             </td>
-          </tr>
-          <tr>
-            <td className="border border-slate-400 px-2 py-1 align-top">Belanja {d.jenis_belanja}</td>
-            <td className="border border-slate-400 px-2 py-1 align-top">{d.kode_rekening}</td>
-            <td className="border border-slate-400 px-2 py-1 align-top">{d.kelompok_belanja}</td>
-            <td className="border border-slate-400 px-2 py-1 align-top">{d.sumber_dana}</td>
-            <td className="border border-slate-400 px-2 py-1 align-top text-right">{d.pagu_anggaran}</td>
-            <td className="border border-slate-400 px-2 py-1 align-top text-right">{d.realisasi_sebelum}</td>
-            <td className="border border-slate-400 px-2 py-1 align-top text-right">{d.jumlah_pengajuan}</td>
-            <td className="border border-slate-400 px-2 py-1 align-top text-right">{d.sisa_anggaran}</td>
-          </tr>
-          <tr>
-            <td className="border border-slate-400 px-2 py-1"></td>
-            <td className="border border-slate-400 px-2 py-1 font-semibold" colSpan={8}>
-              Rincian sebagai berikut:
-            </td>
-          </tr>
-          <tr>
-            <td className="border border-slate-400 px-2 py-1"></td>
-            <td className="border border-slate-400 px-2 py-1" colSpan={6}>
-              Belanja {d.jenis_belanja} {d.uraian_kegiatan_lengkap}
-            </td>
-            <td className="border border-slate-400 px-2 py-1 text-right" colSpan={2}>{d.jumlah_pengajuan}</td>
-          </tr>
-          <tr>
-            <td className="border border-slate-400 px-2 py-1"></td>
-            <td className="border border-slate-400 px-2 py-1 font-bold" colSpan={6}>TOTAL PENGAJUAN</td>
-            <td className="border border-slate-400 px-2 py-1 text-right font-bold" colSpan={2}>{d.total_pengajuan}</td>
+            <td className="border border-slate-400 px-2 py-1.5 font-bold text-center">{d.ajuan_skrg}</td>
+            <td className="border border-slate-400 px-2 py-1.5"></td>
           </tr>
         </tbody>
       </table>
@@ -239,25 +252,21 @@ function SppSptjb({ d }: { d: any }) {
 function KwitansiGu({ d }: { d: any }) {
   return (
     <div>
+      {/* TA / Nomor Bukti / Kode Rekening -- font 10pt, jarak 2 spasi
+          sebelum ':', sesuai lampiran contoh. */}
       <table className="w-full mb-6">
         <tbody>
           <tr>
             <td className="w-1/2"></td>
-            <td className="w-40 align-top">TA</td>
-            <td className="w-4 align-top">:</td>
-            <td className="align-top">{d.tahun_anggaran}</td>
-          </tr>
-          <tr>
-            <td></td>
-            <td className="align-top">Nomor Bukti</td>
-            <td className="align-top">:</td>
-            <td className="align-top">{d.nomor_bukti}</td>
-          </tr>
-          <tr>
-            <td></td>
-            <td className="align-top">Kode Rekening</td>
-            <td className="align-top">:</td>
-            <td className="align-top">{d.kode_rekening_lengkap}</td>
+            <td colSpan={2} className="align-top p-0">
+              <table className="w-full">
+                <tbody>
+                  <BarisKuitansi label="TA" value={d.tahun_anggaran} />
+                  <BarisKuitansi label="Nomor Bukti" value={d.nomor_bukti} />
+                  <BarisKuitansi label="Kode Rekening" value={d.kode_rekening_lengkap} />
+                </tbody>
+              </table>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -283,48 +292,67 @@ function KwitansiGu({ d }: { d: any }) {
         </tbody>
       </table>
 
-      <p className="mb-1">{d.uraian_kegiatan_lengkap} dengan rincian:</p>
-      <div className="mb-4">
-        {(d.rincian ?? []).map((r: any, i: number) => (
-          <p key={i}>
-            - {r.nama_item} {r.qty} {r.satuan} x {r.harga_satuan} = {r.subtotal}
-          </p>
-        ))}
-      </div>
+      {/* Uraian & rincian item -- posisinya SENGAJA dibuat lurus/sejajar
+          dengan kolom nilai di atas (kolom tempat "PEMERINTAH KOTA BATU"
+          / "Rp" berada), bukan menempel ke tepi kiri kertas. */}
+      <table className="w-full mb-4">
+        <tbody>
+          <tr>
+            <td className="w-40 align-top py-0.5"></td>
+            <td className="w-4 align-top py-0.5"></td>
+            <td className="align-top py-0.5">{d.uraian_kegiatan_lengkap} dengan rincian :</td>
+          </tr>
+          {(d.rincian ?? []).map((r: any, i: number) => (
+            <tr key={i}>
+              <td></td>
+              <td></td>
+              <td className="align-top py-0.5">
+                - {r.nama_item} {r.qty} {r.satuan} x Rp {r.harga_satuan} = Rp {r.subtotal}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      <p className="font-bold mb-1">Potongan</p>
+      {/* Potongan s/d Jumlah Diterima -- font 10pt, jarak 2 spasi sebelum
+          ':', sesuai lampiran contoh. */}
+      <p className="font-bold mb-1" style={{ fontSize: "10pt" }}>Potongan</p>
       <table className="w-full mb-1">
         <tbody>
           {/* 6 slot tetap sesuai lampiran Kwitansi GU -- selalu tampil, Rp 0 kalau tidak relevan */}
-          <Baris label="PPN" value={`Rp. ${d.potongan_ppn}`} />
-          <Baris label="Pajak Daerah 10%" value={`Rp. ${d.potongan_pajak_daerah}`} />
-          <Baris label="PPh 21 0,5%" value={`Rp. ${d.potongan_pph21_05}`} />
-          <Baris label="PPh 21 2,5%" value={`Rp. ${d.potongan_pph21_25}`} />
-          <Baris label="PPh 22 1,5%" value={`Rp. ${d.potongan_pph22_15}`} />
-          <Baris label="PPh 23 2%" value={`Rp. ${d.potongan_pph23_2}`} />
+          <BarisKuitansi label="PPN" value={`Rp. ${d.potongan_ppn}`} />
+          <BarisKuitansi label="Pajak Daerah 10%" value={`Rp. ${d.potongan_pajak_daerah}`} />
+          <BarisKuitansi label="PPh 21 0,5%" value={`Rp. ${d.potongan_pph21_05}`} />
+          <BarisKuitansi label="PPh 21 2,5%" value={`Rp. ${d.potongan_pph21_25}`} />
+          <BarisKuitansi label="PPh 22 1,5%" value={`Rp. ${d.potongan_pph22_15}`} />
+          <BarisKuitansi label="PPh 23 2%" value={`Rp. ${d.potongan_pph23_2}`} />
           {(d.potongan_lainnya ?? []).map((p: any, i: number) => (
-            <Baris key={i} label={p.jenis_pajak} value={`Rp. ${p.nominal}`} />
+            <BarisKuitansi key={i} label={p.jenis_pajak} value={`Rp. ${p.nominal}`} />
           ))}
-          <Baris label={<b>Jumlah Potongan</b>} value={<b>Rp. {d.total_potongan}</b>} />
+          <BarisKuitansi label="Jumlah Potongan" value={`Rp. ${d.total_potongan}`} bold />
         </tbody>
       </table>
 
       <table className="w-full mb-10">
         <tbody>
-          <Baris label={<b>Jumlah diterima</b>} value={<b>Rp. {d.jumlah_diterima}</b>} />
+          <BarisKuitansi label="Jumlah diterima" value={`Rp. ${d.jumlah_diterima}`} bold />
         </tbody>
       </table>
 
-      <div className="grid grid-cols-3 mb-10">
-        <div />
-        <div />
-        <div className="text-left">
-          <p>Batu, {d.tanggal_surat}</p>
-          <p>Penerima</p>
-          <div className="h-16" />
-          <p>( {d.nama_penerima} )</p>
+      {/* Blok tanda tangan Penerima -- OPSIONAL, dikontrol dari Form
+          Pengajuan Belanja (checkbox "Cetak blok tanda tangan Penerima"). */}
+      {d.cetak_ttd_penerima && (
+        <div className="grid grid-cols-3 mb-10">
+          <div />
+          <div />
+          <div className="text-left">
+            <p>Batu, {d.tanggal_surat}</p>
+            <p>Penerima</p>
+            <div className="h-16" />
+            <p>( {d.nama_penerima} )</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <table className="w-full text-left border-t border-slate-400 pt-4">
         <thead>
@@ -334,25 +362,44 @@ function KwitansiGu({ d }: { d: any }) {
             <td className="pt-4 font-bold">Setuju dan Lunas Dibayar</td>
           </tr>
           <tr>
-            <td className="pb-2">Kuasa Pengguna Anggaran</td>
-            <td className="pb-2">Pejabat Pelaksana Teknis Kegiatan</td>
-            <td className="pb-2">Bendahara Pengeluaran Pembantu</td>
+            {/* Tanggal pencairan diisi MANUAL oleh Bendahara saat kuitansi
+                benar-benar dibayar (bisa berbeda dari tanggal Nota Dinas) --
+                hanya muncul di kolom Bendahara, ditulis titik-titik. */}
+            <td></td>
+            <td></td>
+            <td className="pb-1">Batu, ……………………………</td>
+          </tr>
+          <tr>
+            <td className="pb-2 whitespace-nowrap">Kuasa Pengguna Anggaran</td>
+            <td className="pb-2 whitespace-nowrap">Pejabat Pelaksana Teknis Kegiatan</td>
+            <td className="pb-2 whitespace-nowrap">Bendahara Pengeluaran Pembantu</td>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td className="h-16 align-bottom">{d.nama_kpa}</td>
-            <td className="h-16 align-bottom">{d.nama_pptk}</td>
-            <td className="h-16 align-bottom">{d.nama_bendahara}</td>
+            <td className="h-16 align-bottom whitespace-nowrap">{d.nama_kpa}</td>
+            <td className="h-16 align-bottom whitespace-nowrap">{d.nama_pptk}</td>
+            <td className="h-16 align-bottom whitespace-nowrap">{d.nama_bendahara}</td>
           </tr>
           <tr>
-            <td>NIP. {d.nip_kpa}</td>
-            <td>NIP. {d.nip_pptk}</td>
-            <td>NIP. {d.nip_bendahara}</td>
+            <td className="whitespace-nowrap">NIP. {d.nip_kpa}</td>
+            <td className="whitespace-nowrap">NIP. {d.nip_pptk}</td>
+            <td className="whitespace-nowrap">NIP. {d.nip_bendahara}</td>
           </tr>
         </tbody>
       </table>
     </div>
+  );
+}
+
+// Baris tabel berbingkai 2 kolom (label | value) TANPA tanda ':' -- dipakai
+// di blok PROGRAM/Kegiatan/Sub Kegiatan/dst pada format Nota Dinas terbaru.
+function RincianBaris({ label, value }: { label: any; value: any }) {
+  return (
+    <tr>
+      <td className="border border-slate-400 px-2 py-1.5 font-medium align-top w-1/3">{label}</td>
+      <td className="border border-slate-400 px-2 py-1.5 align-top">{value}</td>
+    </tr>
   );
 }
 
@@ -362,6 +409,28 @@ function Baris({ label, value, noWidth }: { label: any; value: any; noWidth?: bo
       <td className={`${noWidth ? "w-24" : "w-40"} align-top py-0.5`}>{label}</td>
       <td className="w-4 align-top py-0.5">:</td>
       <td className="align-top py-0.5">{value}</td>
+    </tr>
+  );
+}
+
+// Varian baris label/':'/nilai KHUSUS Kuitansi: label rata kiri dengan jarak
+// 2 ketukan spasi sebelum tanda ':' (bukan ':' menempel di kolom sendiri),
+// dan bisa diberi ukuran font berbeda (dipakai untuk blok TA s/d Kode
+// Rekening dan Potongan s/d Jumlah Diterima -- 10pt sesuai permintaan).
+function BarisKuitansi({
+  label, value, bold, fontSizePt = 10,
+}: {
+  label: any; value: any; bold?: boolean; fontSizePt?: number;
+}) {
+  const Wrap = bold ? "b" : "span" as any;
+  return (
+    <tr style={{ fontSize: `${fontSizePt}pt` }}>
+      <td className="w-44 align-top py-0.5 whitespace-nowrap">
+        <Wrap>{label}&nbsp;&nbsp;:</Wrap>
+      </td>
+      <td className="align-top py-0.5">
+        <Wrap>{value}</Wrap>
+      </td>
     </tr>
   );
 }

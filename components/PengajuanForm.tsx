@@ -432,6 +432,10 @@ export default function PengajuanForm({
   const [uraian, setUraian] = useState("");
   const [penyediaId, setPenyediaId] = useState("");
   const [namaPenerima, setNamaPenerima] = useState("");
+  // Opsi eksplisit: cetak/tidak cetak blok tanda tangan "Penerima" pada
+  // Kuitansi, terpisah dari terisi-tidaknya nama penerima itu sendiri.
+  // Default TRUE (dicetak), sesuai perilaku aplikasi sebelum opsi ini ada.
+  const [cetakTtdPenerima, setCetakTtdPenerima] = useState(true);
   const [penerimaDiubahManual, setPenerimaDiubahManual] = useState(false);
   const [rincian, setRincian] = useState<Rincian[]>([{ nama_item: "", qty: 1, satuan: "", harga_satuan: 0 }]);
   const [potongan, setPotongan] = useState<Potongan[]>([]);
@@ -487,7 +491,7 @@ export default function PengajuanForm({
         const { data: existing } = await supabase
           .from("pengajuan_belanja")
           .select(
-            "id, dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima, metode_pembayaran, nomor_nota_dinas, nomor_bukti, dpa:dpa(tahun_anggaran, tahapan, rekening_id)"
+            "id, dpa_id, tanggal, uraian_kegiatan, penyedia_id, nama_penerima, cetak_ttd_penerima, metode_pembayaran, nomor_nota_dinas, nomor_bukti, dpa:dpa(tahun_anggaran, tahapan, rekening_id)"
           )
           .eq("id", pengajuanId)
           .single();
@@ -497,6 +501,7 @@ export default function PengajuanForm({
           setUraian(existing.uraian_kegiatan);
           setPenyediaId(existing.penyedia_id ?? "");
           setNamaPenerima(existing.nama_penerima ?? "");
+          setCetakTtdPenerima((existing as any).cetak_ttd_penerima ?? true);
           setPenerimaDiubahManual(true); // jangan timpa nama penerima yang sudah tersimpan
           setMetodePembayaran((existing as any).metode_pembayaran || "GU");
           setNomorNotaDinas((existing as any).nomor_nota_dinas || "");
@@ -797,6 +802,7 @@ export default function PengajuanForm({
       uraian_kegiatan: uraian,
       penyedia_id: penyediaId || null,
       nama_penerima: namaPenerima.trim() || null,
+      cetak_ttd_penerima: cetakTtdPenerima,
       metode_pembayaran: metodePembayaran,
       nomor_nota_dinas: nomorNotaDinas.trim() || null,
       nomor_bukti: nomorBukti.trim() || null,
@@ -1119,8 +1125,20 @@ export default function PengajuanForm({
             </datalist>
             <p className="text-xs text-slate-400 mt-1">
               Otomatis terisi dari Nama Direktur/Penanggung Jawab saat memilih Penyedia -- bisa diketik ulang manual bila perlu.
-              Ini adalah opsi tambahan: kosongkan bila tidak diperlukan -- blok tanda tangan "Penerima" beserta tanggalnya
-              otomatis TIDAK dicetak pada Kuitansi apabila field ini dibiarkan kosong.
+            </p>
+            <label className="flex items-center gap-2 mt-2.5 text-xs text-slate-600 select-none">
+              <input
+                type="checkbox"
+                checked={cetakTtdPenerima}
+                onChange={(e) => setCetakTtdPenerima(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              Cetak blok tanda tangan "Penerima" pada Kuitansi
+            </label>
+            <p className="text-xs text-slate-400 mt-1">
+              Matikan opsi ini kalau Kuitansi tidak perlu ditandatangani penerima terpisah (mis. sudah diwakili
+              tanda tangan Bendahara di baris "Setuju dan Lunas Dibayar"). Baris tanggal manual tetap bisa diisi
+              Bendahara meski opsi ini nonaktif.
             </p>
           </div>
         </div>

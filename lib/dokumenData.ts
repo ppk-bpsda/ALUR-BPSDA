@@ -28,7 +28,7 @@ export async function buildDokumenData(pengajuanId: string) {
     .from("pengajuan_belanja")
     .select(
       `
-      id, dpa_id, nomor_bukti, nomor_nota_dinas, metode_pembayaran, tanggal, created_at, uraian_kegiatan, jumlah_pengajuan, nama_penerima,
+      id, dpa_id, nomor_bukti, nomor_nota_dinas, metode_pembayaran, tanggal, created_at, uraian_kegiatan, jumlah_pengajuan, nama_penerima, cetak_ttd_penerima,
       penyedia:penyedia(nama_penyedia, nama_direktur, alamat, npwp, rekening_bank),
       dpa:dpa (
         rekening_id, tahun_anggaran, tahapan, pagu_anggaran, nomor_dpa,
@@ -240,12 +240,16 @@ export async function buildDokumenData(pengajuanId: string) {
     uraian_kegiatan: pengajuan.uraian_kegiatan,
     uraian_kegiatan_lengkap: pengajuan.uraian_kegiatan,
     uraian_belanja: pengajuan.uraian_kegiatan, // alias -- dipakai di template SPTJB sesuai lampiran contoh
+    uraian_belanja_lengkap: pengajuan.uraian_kegiatan, // alias -- baris "Rincian Belanja" di format Nota Dinas terbaru
     jumlah_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
     total_pengajuan: formatRupiah(pengajuan.jumlah_pengajuan),
     realisasi: formatRupiah(pengajuan.jumlah_pengajuan), // alias -- kolom "Ajuan Skrg" di lampiran contoh
+    ajuan_skrg: formatRupiah(pengajuan.jumlah_pengajuan), // alias -- kolom "Ajuan Sekarang" di format Nota Dinas terbaru
     realisasi_sebelum: formatRupiah(realisasiSebelum),
+    realisasi_sblm: formatRupiah(realisasiSebelum), // alias -- kolom "Realisasi Sebelum" di format Nota Dinas terbaru
     sisa_pagu: formatRupiah(paguDokumen - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)), // alias sisa_anggaran -- Sisa = Pagu - Realisasi Sblm - Ajuan Skrg
     sisa_anggaran: formatRupiah(paguDokumen - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)),
+    sisa: formatRupiah(paguDokumen - realisasiSebelum - Number(pengajuan.jumlah_pengajuan)), // alias -- kolom "Sisa" di format Nota Dinas terbaru
     nomor_nota_dinas: pengajuan.nomor_nota_dinas || "-",
     nomor_bukti: pengajuan.nomor_bukti || "-",
     hari_tanggal: formatHariTanggal(pengajuan.tanggal),
@@ -272,6 +276,11 @@ export async function buildDokumenData(pengajuanId: string) {
     // blok tanda tangan Penerima jadi OPSIONAL: otomatis tidak tercetak sama
     // sekali kalau field Nama Penerima di form Pengajuan Belanja dikosongkan.
     nama_penerima: (pengajuan as any).nama_penerima || "",
+    // Opsi eksplisit dari Form Pengajuan Belanja -- dipakai sebagai kondisi
+    // {#cetak_ttd_penerima} di template Kwitansi GU, dan di komponen HTML
+    // pratinjau/cetak. Kalau kolomnya belum ada (migrasi belum jalan),
+    // default TRUE.
+    cetak_ttd_penerima: (pengajuan as any).cetak_ttd_penerima ?? true,
     nama_penyedia: (pengajuan as any).penyedia?.nama_penyedia || "",
 
     jumlah_pengajuan_angka: formatRupiah(pengajuan.jumlah_pengajuan),
