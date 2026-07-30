@@ -142,34 +142,34 @@ export default async function LaporanPage({ searchParams }: { searchParams: { by
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead>
-            <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
-              <th className="font-medium px-4 py-2.5">{TABS.find((t) => t.key === by)?.label}</th>
-              {showPagu && <th className="font-medium px-4 py-2.5 text-right">Pagu</th>}
-              <th className="font-medium px-4 py-2.5 text-right">Realisasi</th>
-              {showPagu && <th className="font-medium px-4 py-2.5 text-right">Sisa</th>}
-              {showPagu && <th className="font-medium px-4 py-2.5 text-right">% Serapan</th>}
+            <tr className="text-left text-sm text-slate-500 border-b border-slate-100">
+              <th className="font-medium px-4 py-3">{TABS.find((t) => t.key === by)?.label}</th>
+              {showPagu && <th className="font-medium px-4 py-3 text-right">Pagu</th>}
+              <th className="font-medium px-4 py-3 text-right">Realisasi</th>
+              {showPagu && <th className="font-medium px-4 py-3 text-right">Sisa</th>}
+              {showPagu && <th className="font-medium px-4 py-3 text-right">% Serapan</th>}
             </tr>
           </thead>
           <tbody>
             {sortedRows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-sm">
+                <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-base">
                   Belum ada data untuk periode ini.
                 </td>
               </tr>
             )}
             {sortedRows.map((r) => (
               <tr key={r.key} className="border-b border-slate-50 last:border-0">
-                <td className="px-4 py-3 text-slate-700">{r.key}</td>
-                {showPagu && <td className="px-4 py-3 text-right text-slate-600">Rp {formatRupiah(r.pagu)}</td>}
-                <td className="px-4 py-3 text-right text-slate-600">Rp {formatRupiah(r.realisasi)}</td>
+                <td className="px-4 py-3.5 text-slate-700">{r.key}</td>
+                {showPagu && <td className="px-4 py-3.5 text-right text-slate-600">Rp {formatRupiah(r.pagu)}</td>}
+                <td className="px-4 py-3.5 text-right text-slate-600">Rp {formatRupiah(r.realisasi)}</td>
                 {showPagu && (
-                  <td className="px-4 py-3 text-right text-slate-600">Rp {formatRupiah(r.pagu - r.realisasi)}</td>
+                  <td className="px-4 py-3.5 text-right text-slate-600">Rp {formatRupiah(r.pagu - r.realisasi)}</td>
                 )}
                 {showPagu && (
-                  <td className="px-4 py-3 text-right text-slate-600">
+                  <td className="px-4 py-3.5 text-right text-slate-600">
                     {r.pagu > 0 ? ((r.realisasi / r.pagu) * 100).toFixed(1) : "0.0"}%
                   </td>
                 )}
@@ -178,13 +178,13 @@ export default async function LaporanPage({ searchParams }: { searchParams: { by
           </tbody>
           {sortedRows.length > 0 && (
             <tfoot>
-              <tr className="border-t border-slate-200 font-medium">
-                <td className="px-4 py-2.5">TOTAL</td>
-                {showPagu && <td className="px-4 py-2.5 text-right">Rp {formatRupiah(totalPagu)}</td>}
-                <td className="px-4 py-2.5 text-right">Rp {formatRupiah(totalRealisasi)}</td>
-                {showPagu && <td className="px-4 py-2.5 text-right">Rp {formatRupiah(totalPagu - totalRealisasi)}</td>}
+              <tr className="border-t border-slate-200 font-semibold">
+                <td className="px-4 py-3">TOTAL</td>
+                {showPagu && <td className="px-4 py-3 text-right">Rp {formatRupiah(totalPagu)}</td>}
+                <td className="px-4 py-3 text-right">Rp {formatRupiah(totalRealisasi)}</td>
+                {showPagu && <td className="px-4 py-3 text-right">Rp {formatRupiah(totalPagu - totalRealisasi)}</td>}
                 {showPagu && (
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-4 py-3 text-right">
                     {totalPagu > 0 ? ((totalRealisasi / totalPagu) * 100).toFixed(1) : "0.0"}%
                   </td>
                 )}

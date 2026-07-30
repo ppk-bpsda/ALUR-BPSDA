@@ -59,7 +59,24 @@ export default async function DokumenPreviewPage({
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; }
-          .doc-sheet { box-shadow: none !important; margin: 0 !important; }
+          .doc-sheet {
+            box-shadow: none !important;
+            margin: 0 !important;
+            /* PENTING: @page di bawah ini SUDAH menerapkan margin
+               ${marginCss} pada area cetak. Kalau .doc-sheet masih
+               dipaksa width: ${lebarKertas} + padding: ${marginCss} juga
+               (seperti dipakai untuk pratinjau di layar), lebar kontennya
+               jadi lebih besar dari area cetak yang tersisa -> konten
+               melebar ke kanan -> Chrome/browser otomatis MENGECILKAN
+               (scale) seluruh halaman supaya tetap muat 1 halaman.
+               Itu sebabnya hasil cetak/Save PDF turun dari 100%.
+               Untuk cetak/PDF, biarkan .doc-sheet mengikuti area cetak
+               @page apa adanya (width auto, padding 0) -- margin visualnya
+               sudah otomatis didapat dari @page margin di bawah. */
+            width: auto !important;
+            max-width: none !important;
+            padding: 0 !important;
+          }
         }
         /* Atas 1,5cm, kiri 2,5cm, bawah 2cm, kanan 2cm -- sama persis
            dengan margin di template .docx (templates/) supaya hasil
