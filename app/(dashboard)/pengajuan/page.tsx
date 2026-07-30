@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
-import { getPeriode, tahapanLabel } from "@/lib/periode";
+import { getPeriode, tahapanLabel, tahapanUpTo } from "@/lib/periode";
 import Link from "next/link";
 import { Plus, Upload } from "lucide-react";
 import GenerateButtons from "./GenerateButtons";
@@ -56,13 +56,18 @@ export default async function PengajuanPage({
       .order("jenis_belanja"),
   ]);
 
+  // Realisasi MENGAKUMULASI tahapan sebelumnya sampai dengan tahapan yang
+  // sedang dipilih (Murni -> Pergeseran -> Perubahan) -- lihat
+  // tahapanUpTo() di lib/periode.ts. Contoh: tahapan Murni hanya
+  // menampilkan realisasi Murni; tahapan Pergeseran menampilkan
+  // Murni + Pergeseran; tahapan Perubahan menampilkan ketiganya.
   let query = supabase
     .from("pengajuan_belanja")
     .select(
       "id, nomor_bukti, metode_pembayaran, tanggal, uraian_kegiatan, jumlah_pengajuan, status, dpa:dpa!inner(tahun_anggaran, tahapan, rekening_id, rekening:rekening_belanja!inner(kode_rekening, sub_kegiatan_id, sub_kegiatan:sub_kegiatan!inner(kegiatan_id)))"
     )
     .eq("dpa.tahun_anggaran", tahun)
-    .eq("dpa.tahapan", tahapan)
+    .in("dpa.tahapan", tahapanUpTo(tahapan))
     .order("tanggal", { ascending: false });
   if (statusFilter) query = query.eq("status", statusFilter);
   if (kegiatanFilter) query = query.eq("dpa.rekening.sub_kegiatan.kegiatan_id", kegiatanFilter);
@@ -87,6 +92,7 @@ export default async function PengajuanPage({
           <h1 className="font-serif text-xl text-slate-900">Pengajuan Belanja</h1>
           <p className="text-sm text-slate-500">
             Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)} -- dicetak jadi dokumen dari sini.
+            Realisasi mengakumulasi tahapan sebelumnya sampai dengan tahapan ini (Murni {"->"} Pergeseran {"->"} Perubahan).
             {statusFilter && (
               <> Menampilkan status <span className="font-medium text-slate-700">{STATUS_LABEL[statusFilter]}</span>.</>
             )}
@@ -135,6 +141,7 @@ export default async function PengajuanPage({
               <th className="font-medium px-4 py-2.5">Kode Rekening</th>
               <th className="font-medium px-4 py-2.5">Uraian</th>
               <th className="font-medium px-4 py-2.5">Jumlah</th>
+              <th className="font-medium px-4 py-2.5">Tahapan</th>
               <th className="font-medium px-4 py-2.5">Status</th>
               <th className="font-medium px-4 py-2.5">Metode</th>
               <th className="font-medium px-4 py-2.5">Dokumen</th>
@@ -144,7 +151,7 @@ export default async function PengajuanPage({
           <tbody>
             {(list ?? []).length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-slate-400 text-sm">
+                <td colSpan={9} className="px-4 py-6 text-center text-slate-400 text-sm">
                   Belum ada pengajuan.
                 </td>
               </tr>
@@ -157,6 +164,11 @@ export default async function PengajuanPage({
                 </td>
                 <td className="px-4 py-3 text-slate-700 max-w-sm truncate">{row.uraian_kegiatan}</td>
                 <td className="px-4 py-3 text-slate-700">Rp {formatRupiah(row.jumlah_pengajuan)}</td>
+                <td className="px-4 py-3">
+                  <span className="text-[11px] font-medium rounded-full px-2 py-0.5 bg-slate-100 text-slate-600">
+                    {tahapanLabel(row.dpa?.tahapan)}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
                   <StatusSelect pengajuanId={row.id} status={row.status} />
                 </td>
