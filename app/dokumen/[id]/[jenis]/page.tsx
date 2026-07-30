@@ -252,8 +252,10 @@ function SppSptjb({ d }: { d: any }) {
 function KwitansiGu({ d }: { d: any }) {
   return (
     <div>
-      {/* TA / Nomor Bukti / Kode Rekening -- font 10pt, jarak 2 spasi
-          sebelum ':', sesuai lampiran contoh. */}
+      {/* TA / Nomor Bukti / Kode Rekening -- font 10pt. Tanda ':' pada
+          ketiga baris LURUS (kolom label lebar tetap, acuan baris Kode
+          Rekening), nilai (2026 / - / kode rekening) ditulis 2 ketukan
+          spasi SETELAH ':', dan kode rekening dipaksa 1 baris. */}
       <table className="w-full mb-6">
         <tbody>
           <tr>
@@ -314,8 +316,9 @@ function KwitansiGu({ d }: { d: any }) {
         </tbody>
       </table>
 
-      {/* Potongan s/d Jumlah Diterima -- font 10pt, jarak 2 spasi sebelum
-          ':', sesuai lampiran contoh. */}
+      {/* Potongan s/d Jumlah Diterima -- font 10pt. Tanda ':' LURUS,
+          acuan baris "Pajak Daerah 10%" (label terpanjang di blok ini),
+          nilai ditulis 2 ketukan spasi SETELAH ':'. */}
       <p className="font-bold mb-1" style={{ fontSize: "10pt" }}>Potongan</p>
       <table className="w-full mb-1">
         <tbody>
@@ -423,13 +426,23 @@ function BarisKuitansi({
   label: any; value: any; bold?: boolean; fontSizePt?: number;
 }) {
   const Wrap = bold ? "b" : "span" as any;
+  // Label & ':' dipisah jadi kolom sendiri-sendiri (lebar label TETAP,
+  // sama untuk semua baris dalam satu blok) supaya tanda ':' selalu LURUS
+  // vertikal, baik di blok TA/Nomor Bukti/Kode Rekening maupun di blok
+  // Potongan s/d Jumlah Diterima -- acuan lurusnya adalah baris berlabel
+  // terpanjang di masing-masing blok (Kode Rekening / Pajak Daerah 10%).
+  // Nilai (2026, -, kode rekening, dst) ditulis 2 ketukan spasi SETELAH
+  // ':', dan kode rekening dipaksa tetap 1 baris (whitespace-nowrap).
   return (
     <tr style={{ fontSize: `${fontSizePt}pt` }}>
       <td className="w-44 align-top py-0.5 whitespace-nowrap">
-        <Wrap>{label}&nbsp;&nbsp;:</Wrap>
+        <Wrap>{label}</Wrap>
       </td>
-      <td className="align-top py-0.5">
-        <Wrap>{value}</Wrap>
+      <td className="align-top py-0.5 whitespace-nowrap" style={{ width: "4mm" }}>
+        <Wrap>:</Wrap>
+      </td>
+      <td className="align-top py-0.5 whitespace-nowrap">
+        <Wrap>&nbsp;&nbsp;{value}</Wrap>
       </td>
     </tr>
   );
