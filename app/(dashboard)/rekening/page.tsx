@@ -1,16 +1,30 @@
 import { createClient } from "@/lib/supabase/server";
 import { getPeriode, tahapanLabel, TAHAPAN_OPTIONS } from "@/lib/periode";
-import { addRekening, updateRekening, deleteRekening, addKegiatan, addSubKegiatan, salinDariTahapan } from "./actions";
+import {
+  addRekening,
+  updateRekening,
+  deleteRekening,
+  addKegiatan,
+  addSubKegiatan,
+  salinDariTahapan,
+  setTanggalPenetapanTahapan,
+} from "./actions";
 import { formatRupiah } from "@/lib/terbilang";
 import { kodeRekeningBelanja } from "@/lib/format";
-import { Trash2, Copy } from "lucide-react";
+import { Trash2, Copy, CalendarClock } from "lucide-react";
 
 export default async function RekeningPage() {
   const { tahun, tahapan } = getPeriode();
   const supabase = createClient();
 
-  const [{ data: dpaList }, { data: subKegiatan }, { data: pptkList }, { data: program }, { data: kegiatan }] =
-    await Promise.all([
+  const [
+    { data: dpaList },
+    { data: subKegiatan },
+    { data: pptkList },
+    { data: program },
+    { data: kegiatan },
+    { data: tanggalTahapanRaw },
+  ] = await Promise.all([
       supabase
         .from("dpa")
         .select(
@@ -36,7 +50,21 @@ export default async function RekeningPage() {
         .select("id, kode_kegiatan, nama_kegiatan, program_id")
         .eq("tahun_anggaran", tahun)
         .order("kode_kegiatan"),
+      supabase
+        .from("dpa")
+        .select("tahapan, tanggal_penetapan")
+        .eq("tahun_anggaran", tahun),
     ]);
+
+  const tanggalPenetapanPerTahapan: Record<string, string | null> = {};
+  for (const t of TAHAPAN_OPTIONS) {
+    const nilai = new Set(
+      (tanggalTahapanRaw ?? [])
+        .filter((r: any) => r.tahapan === t.value)
+        .map((r: any) => r.tanggal_penetapan)
+    );
+    tanggalPenetapanPerTahapan[t.value] = nilai.size === 1 ? (Array.from(nilai)[0] as string | null) : nilai.size > 1 ? "beragam" : null;
+  }
 
   const totalPagu = (dpaList ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
   const tahapanLain = TAHAPAN_OPTIONS.filter((t) => t.value !== tahapan);
@@ -49,6 +77,53 @@ export default async function RekeningPage() {
           Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)}. Tambah/edit/hapus rekening dan pagu
           untuk tahapan ini -- ganti periode lewat menu akun di kanan atas untuk mengelola tahapan lain.
         </p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="flex items-start gap-2 mb-3">
+          <CalendarClock className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-slate-900">Tanggal Penetapan Tahapan</p>
+            <p className="text-xs text-slate-500">
+              Tanggal DPA tiap tahapan ditetapkan -- dipakai sistem untuk otomatis menentukan tahapan mana
+              yang berlaku pada Pengajuan Belanja, berdasarkan tanggal transaksinya (bukan berdasarkan
+              periode aktif saat input). Transaksi bertanggal SEBELUM tanggal ini masuk tahapan sebelumnya;
+              tanggal ini atau setelahnya masuk tahapan ini. Mengubah tanggal di sini otomatis merapikan
+              ulang pengajuan yang sudah ada.
+            </p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {TAHAPAN_OPTIONS.map((t) => {
+            const nilai = tanggalPenetapanPerTahapan[t.value];
+            return (
+              <form key={t.value} action={setTanggalPenetapanTahapan} className="flex items-end gap-2">
+                <input type="hidden" name="tahapan_target" value={t.value} />
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">{t.label}</label>
+                  <input
+                    type="date"
+                    name="tanggal_penetapan"
+                    defaultValue={nilai && nilai !== "beragam" ? nilai : ""}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
+                  />
+                  {nilai === "beragam" && (
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      Tanggal rekening di tahapan ini beragam -- simpan untuk menyamakan semua ke tanggal
+                      yang dipilih.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="shrink-0 bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium rounded-lg px-3 py-1.5"
+                >
+                  Simpan
+                </button>
+              </form>
+            );
+          })}
+        </div>
       </div>
 
       {tahapanLain.length > 0 && (
