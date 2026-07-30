@@ -9,7 +9,7 @@ import StatusSelect from "./StatusSelect";
 import PengajuanFilter from "./PengajuanFilter";
 
 const STATUS_LABEL: Record<string, string> = {
-  draft: "Draft",
+  draft: "Draf",
   diajukan: "Diajukan",
   disetujui: "Disetujui",
   dicairkan: "Dicairkan",
@@ -88,10 +88,7 @@ export default async function PengajuanPage({
           <p className="text-sm text-slate-500">
             Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)} -- dicetak jadi dokumen dari sini.
             {statusFilter && (
-              <>
-                {" "}Menampilkan status <span className="font-medium text-slate-700">{STATUS_LABEL[statusFilter]}</span>{" "}
-                <Link href="/pengajuan" className="text-emerald-700 hover:underline">(hapus filter)</Link>
-              </>
+              <> Menampilkan status <span className="font-medium text-slate-700">{STATUS_LABEL[statusFilter]}</span>.</>
             )}
           </p>
         </div>
