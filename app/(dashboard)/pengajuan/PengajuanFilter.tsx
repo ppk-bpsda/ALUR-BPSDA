@@ -8,6 +8,14 @@ type Kegiatan = { id: string; nama_kegiatan: string };
 type SubKegiatan = { id: string; nama_sub_kegiatan: string; kegiatan_id: string };
 type Rekening = { id: string; jenis_belanja: string; sub_kegiatan_id: string };
 
+const STATUS_OPTIONS = [
+  { value: "draft", label: "Draf" },
+  { value: "diajukan", label: "Diajukan" },
+  { value: "disetujui", label: "Disetujui" },
+  { value: "dicairkan", label: "Dicairkan" },
+  { value: "ditolak", label: "Ditolak" },
+];
+
 export default function PengajuanFilter({
   kegiatanList,
   subKegiatanList,
@@ -20,6 +28,7 @@ export default function PengajuanFilter({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [status, setStatus] = useState(searchParams.get("status") || "");
   const [kegiatan, setKegiatan] = useState(searchParams.get("kegiatan") || "");
   const [subKegiatan, setSubKegiatan] = useState(searchParams.get("sub_kegiatan") || "");
   const [rekening, setRekening] = useState(searchParams.get("rekening") || "");
@@ -38,6 +47,7 @@ export default function PengajuanFilter({
     : rekeningList;
 
   function terapkan(next: {
+    status?: string;
     kegiatan?: string;
     subKegiatan?: string;
     rekening?: string;
@@ -45,20 +55,21 @@ export default function PengajuanFilter({
     sampai?: string;
   }) {
     const params = new URLSearchParams(searchParams.toString());
-    const status = params.get("status");
+    params.delete("status");
     params.delete("kegiatan");
     params.delete("sub_kegiatan");
     params.delete("rekening");
     params.delete("dari");
     params.delete("sampai");
-    if (status) params.set("status", status);
 
+    const st = next.status ?? status;
     const k = next.kegiatan ?? kegiatan;
     const sk = next.subKegiatan ?? subKegiatan;
     const rk = next.rekening ?? rekening;
     const d = next.dari ?? dari;
     const s = next.sampai ?? sampai;
 
+    if (st) params.set("status", st);
     if (k) params.set("kegiatan", k);
     if (sk) params.set("sub_kegiatan", sk);
     if (rk) params.set("rekening", rk);
@@ -66,6 +77,11 @@ export default function PengajuanFilter({
     if (s) params.set("sampai", s);
 
     router.push(`/pengajuan?${params.toString()}`);
+  }
+
+  function handleStatus(v: string) {
+    setStatus(v);
+    terapkan({ status: v });
   }
 
   function handleKegiatan(v: string) {
@@ -86,19 +102,34 @@ export default function PengajuanFilter({
     terapkan({ rekening: v });
   }
 
-  const adaFilter = kegiatan || subKegiatan || rekening || dari || sampai;
+  const adaFilter = status || kegiatan || subKegiatan || rekening || dari || sampai;
 
   function reset() {
+    setStatus("");
     setKegiatan("");
     setSubKegiatan("");
     setRekening("");
     setDari("");
     setSampai("");
-    terapkan({ kegiatan: "", subKegiatan: "", rekening: "", dari: "", sampai: "" });
+    terapkan({ status: "", kegiatan: "", subKegiatan: "", rekening: "", dari: "", sampai: "" });
   }
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-3 flex flex-wrap items-end gap-3">
+      <div className="min-w-[160px]">
+        <label className="block text-xs text-slate-400 mb-1">Status</label>
+        <select
+          value={status}
+          onChange={(e) => handleStatus(e.target.value)}
+          className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
+        >
+          <option value="">Semua Status</option>
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+
       <div className="min-w-[180px]">
         <label className="block text-xs text-slate-400 mb-1">Kegiatan</label>
         <select
