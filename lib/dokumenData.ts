@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { terbilang, formatRupiah } from "@/lib/terbilang";
 import { formatTanggalSurat, formatHariTanggal, kodeRekeningBelanja } from "@/lib/format";
+import { tahapanUpTo } from "@/lib/periode";
 
 export type DokumenData = Awaited<ReturnType<typeof buildDokumenData>>;
 
@@ -75,21 +76,29 @@ export async function buildDokumenData(pengajuanId: string) {
   //     di 3 baris sebelum berubah jadi 32.100.000 saat tahapan berganti).
   //   - Realisasi Sblm = akumulasi (SUM) seluruh Ajuan Skrg dari SEMUA
   //     Nota Dinas sebelumnya (disetujui/dicairkan) untuk REKENING yang
-  //     sama, LINTAS tahapan DPA (bukan cuma dpa_id yang sama) --
-  //     akumulasi ini TIDAK di-reset saat tahapan/pagu berganti (lihat
+  //     sama, DARI TAHAPAN YANG URUTANNYA <= TAHAPAN DOKUMEN INI (bukan
+  //     cuma dpa_id yang sama, tapi juga TIDAK ikut tahapan yang lebih
+  //     baru) -- lihat tahapanUpTo() di lib/periode.ts. Contoh: dokumen
+  //     di tahapan Murni hanya mengakumulasi realisasi Murni; dokumen di
+  //     tahapan Pergeseran mengakumulasi Murni + Pergeseran; dokumen di
+  //     tahapan Perubahan mengakumulasi Murni + Pergeseran + Perubahan.
+  //     Akumulasi ini TIDAK di-reset saat tahapan/pagu berganti (lihat
   //     kolom C: terus bertambah dari bulan ke bulan meski Pagu di
-  //     kolom B berubah).
+  //     kolom B berubah), tapi juga tidak "mengintip" realisasi tahapan
+  //     yang lebih baru dari tahapan dokumen ini sendiri.
   //   - Sisa = Pagu - Realisasi Sblm - Ajuan Skrg.
   const rekeningIdForRealisasi = (pengajuan as any).dpa?.rekening_id;
   const tahunAnggaranForRealisasi = (pengajuan as any).dpa?.tahun_anggaran;
+  const tahapanDokumenIni = (pengajuan as any).dpa?.tahapan;
   const tanggalDokumenIni = (pengajuan as any).tanggal;
   const createdAtDokumenIni = (pengajuan as any).created_at;
 
   const { data: riwayatRows } = await supabase
     .from("pengajuan_belanja")
-    .select("jumlah_pengajuan, tanggal, created_at, dpa!inner(rekening_id, tahun_anggaran)")
+    .select("jumlah_pengajuan, tanggal, created_at, dpa!inner(rekening_id, tahun_anggaran, tahapan)")
     .eq("dpa.rekening_id", rekeningIdForRealisasi)
     .eq("dpa.tahun_anggaran", tahunAnggaranForRealisasi)
+    .in("dpa.tahapan", tahapanUpTo(tahapanDokumenIni))
     .in("status", ["disetujui", "dicairkan"])
     .neq("id", pengajuanId);
 

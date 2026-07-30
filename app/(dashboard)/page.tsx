@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
-import { getPeriode, tahapanLabel } from "@/lib/periode";
+import { getPeriode, tahapanLabel, tahapanUpTo } from "@/lib/periode";
 import {
   Wallet, Receipt, FileSpreadsheet, ClipboardList,
   FilePen, Send, CheckCircle2, Landmark, XCircle, ArrowUpRight,
@@ -130,7 +130,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
       "id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))"
     )
     .eq("dpa.tahun_anggaran", tahun)
-    .eq("dpa.tahapan", tahapan)
+    .in("dpa.tahapan", tahapanUpTo(tahapan))
     .eq("status", "dicairkan");
 
   type LaporanRow = { key: string; pagu: number; realisasi: number };

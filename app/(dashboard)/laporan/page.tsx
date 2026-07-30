@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getPeriode, tahapanLabel } from "@/lib/periode";
+import { getPeriode, tahapanLabel, tahapanUpTo } from "@/lib/periode";
 import { formatRupiah } from "@/lib/terbilang";
 import Link from "next/link";
 
@@ -37,13 +37,16 @@ export default async function LaporanPage({ searchParams }: { searchParams: { by
 
   // Semua pengajuan yang sudah disetujui/dicairkan di periode aktif --
   // sumber realisasi, dan tanggal untuk pengelompokan bulan/triwulan.
+  // Realisasi MENGAKUMULASI tahapan yang urutannya <= tahapan yang
+  // sedang dipilih (Murni -> Pergeseran -> Perubahan), bukan hanya
+  // tahapan yang persis sama -- lihat tahapanUpTo() di lib/periode.ts.
   const { data: realisasiList } = await supabase
     .from("pengajuan_belanja")
     .select(
       "id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))"
     )
     .eq("dpa.tahun_anggaran", tahun)
-    .eq("dpa.tahapan", tahapan)
+    .in("dpa.tahapan", tahapanUpTo(tahapan))
     .in("status", ["disetujui", "dicairkan"]);
 
   type Row = { key: string; pagu: number; realisasi: number };
@@ -116,7 +119,9 @@ export default async function LaporanPage({ searchParams }: { searchParams: { by
         <h1 className="font-serif text-xl text-slate-900">Laporan Realisasi</h1>
         <p className="text-sm text-slate-500">
           Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)} -- hanya pengajuan berstatus
-          disetujui/dicairkan yang dihitung sebagai realisasi.
+          disetujui/dicairkan yang dihitung sebagai realisasi. Pagu mengikuti tahapan yang dipilih,
+          sedangkan Realisasi mengakumulasi tahapan sebelumnya (Murni {"->"} Pergeseran {"->"} Perubahan)
+          sampai dengan tahapan ini.
         </p>
       </div>
 
