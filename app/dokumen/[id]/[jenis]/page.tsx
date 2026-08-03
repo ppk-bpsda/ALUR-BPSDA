@@ -37,13 +37,14 @@ export default async function DokumenPreviewPage({
     );
   }
 
-  // Margin dokumen: atas 1,5cm / kiri 2,5cm / bawah 2cm / kanan 2cm --
+  // Margin dokumen: atas 1cm / kiri 1,5cm / bawah 1,5cm / kanan 1,5cm --
   // berlaku sama untuk pratinjau layar, cetak langsung ke printer, maupun
   // "Save as PDF" (satu sumber CSS yang sama untuk ketiganya, supaya tidak
-  // ada selisih ukuran antar cara cetak).
+  // ada selisih ukuran antar cara cetak), dan SAMA PERSIS dengan margin
+  // di template .docx (templates/) supaya hasil Unduh Word tidak berselisih.
   const orientasi = searchParams.orientasi === "landscape" ? "landscape" : "portrait";
   const isLandscape = orientasi === "landscape";
-  const marginCss = "15mm 20mm 20mm 25mm"; // top right bottom left
+  const marginCss = "10mm 15mm 15mm 15mm"; // top right bottom left
   const lebarKertas = isLandscape ? "297mm" : "210mm";
 
   return (
@@ -78,7 +79,7 @@ export default async function DokumenPreviewPage({
             padding: 0 !important;
           }
         }
-        /* Atas 1,5cm, kiri 2,5cm, bawah 2cm, kanan 2cm -- sama persis
+        /* Atas 1cm, kiri 1,5cm, bawah 1,5cm, kanan 1,5cm -- sama persis
            dengan margin di template .docx (templates/) supaya hasil
            Unduh Word dan hasil cetak/PDF dari sini tidak berselisih. */
         @page { size: A4 ${orientasi}; margin: ${marginCss}; }
@@ -131,7 +132,10 @@ function NotaDinas({ d }: { d: any }) {
   return (
     <div>
       <KopSurat />
-      <h1 className="text-center font-bold text-base underline mb-6">NOTA DINAS</h1>
+      {/* Jarak dengan kop surat = spasi 1,5 (sama seperti template .docx) */}
+      <h1 className="text-center font-bold text-base underline mb-6" style={{ lineHeight: 1.5 }}>
+        NOTA DINAS
+      </h1>
 
       <table className="w-full mb-4">
         <tbody>
@@ -213,7 +217,10 @@ function SppSptjb({ d }: { d: any }) {
   return (
     <div>
       <KopSurat />
-      <h1 className="text-center font-bold text-base underline mb-6">SURAT PERNYATAAN TANGGUNG JAWAB BELANJA</h1>
+      {/* Jarak dengan kop surat = spasi 1,5 (sama seperti template .docx) */}
+      <h1 className="text-center font-bold text-base underline mb-6" style={{ lineHeight: 1.5 }}>
+        SURAT PERNYATAAN TANGGUNG JAWAB BELANJA
+      </h1>
 
       <table className="mb-4">
         <tbody>
