@@ -58,22 +58,3 @@ export function getPeriode(): { tahun: number; tahapan: (typeof TAHAPAN_OPTIONS)
 export function tahapanLabel(value: string) {
   return TAHAPAN_OPTIONS.find((t) => t.value === value)?.label ?? value;
 }
-
-// Urutan Tahapan DPA: Murni -> Pergeseran -> Perubahan. Dipakai untuk
-// AKUMULASI REALISASI lintas tahapan sesuai aturan bisnis:
-//   - PAGU selalu mengikuti tahapan yang sedang dipilih saja (tidak
-//     diakumulasi -- lihat pagu_anggaran per baris dpa).
-//   - REALISASI mengakumulasi tahapan yang urutannya <= tahapan yang
-//     sedang dipilih: tahapan Murni -> realisasi Murni saja; tahapan
-//     Pergeseran -> realisasi Murni + Pergeseran; tahapan Perubahan ->
-//     realisasi Murni + Pergeseran + Perubahan.
-//   - Ini konsisten dengan resolveDpaId() di PengajuanForm.tsx, yang
-//     sudah menempatkan tiap transaksi ke dpa_id tahapan yang SEHARUSNYA
-//     berlaku berdasarkan tanggal transaksi (bukan periode aktif) --
-//     jadi realisasi tahapan Murni tidak akan pernah "kelewatan" masuk
-//     ke tahapan berikutnya, dan sebaliknya.
-export function tahapanUpTo(tahapan: string): string[] {
-  const idx = TAHAPAN_OPTIONS.findIndex((t) => t.value === tahapan);
-  if (idx === -1) return [tahapan];
-  return TAHAPAN_OPTIONS.slice(0, idx + 1).map((t) => t.value);
-}
