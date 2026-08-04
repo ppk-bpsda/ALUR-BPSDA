@@ -133,7 +133,7 @@ function NotaDinas({ d }: { d: any }) {
     <div>
       <KopSurat />
       {/* Jarak dengan kop surat = spasi 1,5 (sama seperti template .docx) */}
-      <h1 className="text-center font-bold text-base underline mb-6" style={{ lineHeight: 1.5 }}>
+      <h1 className="text-center font-bold text-base mb-6" style={{ lineHeight: 1.5 }}>
         NOTA DINAS
       </h1>
 
@@ -170,12 +170,12 @@ function NotaDinas({ d }: { d: any }) {
 
       <table className="w-full border border-slate-400 border-collapse mb-4 text-sm">
         <thead>
-          <tr className="bg-slate-50 text-center font-semibold">
-            <th className="border border-slate-400 px-2 py-1.5">Sumber Dana</th>
-            <th className="border border-slate-400 px-2 py-1.5">Pagu</th>
-            <th className="border border-slate-400 px-2 py-1.5">Realisasi Sebelum</th>
-            <th className="border border-slate-400 px-2 py-1.5">Ajuan Sekarang</th>
-            <th className="border border-slate-400 px-2 py-1.5">Sisa</th>
+          <tr className="text-center">
+            <th className="border border-slate-400 px-2 py-1.5 font-normal">Sumber Dana</th>
+            <th className="border border-slate-400 px-2 py-1.5 font-normal">Pagu</th>
+            <th className="border border-slate-400 px-2 py-1.5 font-normal">Realisasi Sebelum</th>
+            <th className="border border-slate-400 px-2 py-1.5 font-normal">Ajuan Sekarang</th>
+            <th className="border border-slate-400 px-2 py-1.5 font-normal">Sisa</th>
           </tr>
         </thead>
         <tbody>
@@ -200,9 +200,9 @@ function NotaDinas({ d }: { d: any }) {
 
       <div className="flex justify-end">
         <div className="text-left w-64">
-          <p className="font-semibold">PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
+          <p>PEJABAT PELAKSANA TEKNIS KEGIATAN</p>
           <div className="h-16" />
-          <p className="font-medium">{d.nama_pptk}.</p>
+          <p>{d.nama_pptk}.</p>
           <p>NIP. {d.nip_pptk}</p>
         </div>
       </div>
@@ -260,7 +260,7 @@ function SppSptjb({ d }: { d: any }) {
 
       <div className="flex justify-end">
         <div className="text-left w-64">
-          <p className="font-semibold">PEJABAT PELAKSANA TEKNIS KEGIATAN (PPTK),</p>
+          <p className="font-semibold">PEJABAT PELAKSANA TEKNIS KEGIATAN,</p>
           <div className="h-16" />
           <p className="font-medium">{d.nama_pptk}</p>
           <p>NIP. {d.nip_pptk}</p>
@@ -424,7 +424,7 @@ function KwitansiGu({ d }: { d: any }) {
 function RincianBaris({ label, value }: { label: any; value: any }) {
   return (
     <tr>
-      <td className="border border-slate-400 px-2 py-1.5 font-medium align-top w-1/3">{label}</td>
+      <td className="border border-slate-400 px-2 py-1.5 align-top w-1/3">{label}</td>
       <td className="border border-slate-400 px-2 py-1.5 align-top">{value}</td>
     </tr>
   );
