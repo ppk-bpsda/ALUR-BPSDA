@@ -60,46 +60,68 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
 
-  const { data: rekap } = await supabase
-    .from("rekap_realisasi")
-    .select("*")
-    .eq("tahun_anggaran", tahun)
-    .eq("tahapan", tahapan);
+  // PERFORMA: keenam query di bawah tidak saling bergantung -> dijalankan
+  // BERSAMAAN (Promise.all). Sebelumnya dijalankan satu per satu sehingga
+  // waktu muat dashboard = jumlah seluruh latensi ke database.
+  const bulanIni = new Date();
+  const awalBulan = new Date(bulanIni.getFullYear(), bulanIni.getMonth(), 1).toISOString();
+
+  const [
+    { data: rekap },
+    { data: pengajuanTerbaru },
+    { count: pengajuanBulanIni },
+    { data: statusRows },
+    { data: dpaList },
+    { data: realisasiList },
+  ] = await Promise.all([
+    supabase
+      .from("rekap_realisasi")
+      .select("pagu_anggaran, total_realisasi")
+      .eq("tahun_anggaran", tahun)
+      .eq("tahapan", tahapan),
+    // Diurutkan berdasarkan tanggal transaksi/Nota Dinas terbaru, lalu created_at.
+    supabase
+      .from("pengajuan_belanja")
+      .select(
+        "id, nomor_bukti, nomor_nota_dinas, tanggal, uraian_kegiatan, jumlah_pengajuan, status, created_at, dpa:dpa!inner(tahun_anggaran, tahapan)"
+      )
+      .eq("dpa.tahun_anggaran", tahun)
+      .eq("dpa.tahapan", tahapan)
+      .order("tanggal", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(8),
+    supabase
+      .from("pengajuan_belanja")
+      .select("id, dpa:dpa!inner(tahun_anggaran, tahapan)", { count: "exact", head: true })
+      .eq("dpa.tahun_anggaran", tahun)
+      .eq("dpa.tahapan", tahapan)
+      .gte("created_at", awalBulan),
+    supabase
+      .from("pengajuan_belanja")
+      .select("status, dpa:dpa!inner(tahun_anggaran, tahapan)")
+      .eq("dpa.tahun_anggaran", tahun)
+      .eq("dpa.tahapan", tahapan),
+    supabase
+      .from("dpa")
+      .select(
+        "id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))"
+      )
+      .eq("tahun_anggaran", tahun)
+      .eq("tahapan", tahapan),
+    supabase
+      .from("pengajuan_belanja")
+      .select(
+        "id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))"
+      )
+      .eq("dpa.tahun_anggaran", tahun)
+      .in("dpa.tahapan", tahapanUpTo(tahapan))
+      .eq("status", "dicairkan"),
+  ]);
+
   const totalPagu = (rekap ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
   const totalRealisasi = (rekap ?? []).reduce((s, r: any) => s + Number(r.total_realisasi || 0), 0);
   const totalSisa = totalPagu - totalRealisasi;
 
-  // Pengajuan Terbaru -- diurutkan berdasarkan tanggal transaksi/tanggal
-  // Nota Dinas (kolom `tanggal`) terbaru dahulu, bukan waktu input data
-  // (created_at). Kalau tanggalnya sama, baru dipecah oleh created_at
-  // supaya urutan tetap stabil.
-  const { data: pengajuanTerbaru } = await supabase
-    .from("pengajuan_belanja")
-    .select(
-      "id, nomor_bukti, nomor_nota_dinas, tanggal, uraian_kegiatan, jumlah_pengajuan, status, created_at, dpa:dpa!inner(tahun_anggaran, tahapan)"
-    )
-    .eq("dpa.tahun_anggaran", tahun)
-    .eq("dpa.tahapan", tahapan)
-    .order("tanggal", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(8);
-
-  const bulanIni = new Date();
-  const { count: pengajuanBulanIni } = await supabase
-    .from("pengajuan_belanja")
-    .select("id, dpa:dpa!inner(tahun_anggaran, tahapan)", { count: "exact", head: true })
-    .eq("dpa.tahun_anggaran", tahun)
-    .eq("dpa.tahapan", tahapan)
-    .gte("created_at", new Date(bulanIni.getFullYear(), bulanIni.getMonth(), 1).toISOString());
-
-  // Rekap Pengajuan per status (Draft/Diajukan/Disetujui/Dicairkan/Ditolak)
-  // untuk periode berjalan -- ditampilkan sebagai kartu ringkas di atas
-  // tabel Pengajuan Terbaru.
-  const { data: statusRows } = await supabase
-    .from("pengajuan_belanja")
-    .select("status, dpa:dpa!inner(tahun_anggaran, tahapan)")
-    .eq("dpa.tahun_anggaran", tahun)
-    .eq("dpa.tahapan", tahapan);
   const rekapStatusCount: Record<string, number> = {
     draft: 0, diajukan: 0, disetujui: 0, dicairkan: 0, ditolak: 0,
   };
@@ -116,23 +138,6 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
   const by: GroupBy = (["pptk", "kegiatan", "subkegiatan", "bulan", "triwulan"].includes(searchParams.laporan || "")
     ? searchParams.laporan
     : "pptk") as GroupBy;
-
-  const { data: dpaList } = await supabase
-    .from("dpa")
-    .select(
-      "id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))"
-    )
-    .eq("tahun_anggaran", tahun)
-    .eq("tahapan", tahapan);
-
-  const { data: realisasiList } = await supabase
-    .from("pengajuan_belanja")
-    .select(
-      "id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))"
-    )
-    .eq("dpa.tahun_anggaran", tahun)
-    .in("dpa.tahapan", tahapanUpTo(tahapan))
-    .eq("status", "dicairkan");
 
   type LaporanRow = { key: string; pagu: number; realisasi: number };
   const laporanRows = new Map<string, LaporanRow>();
@@ -192,9 +197,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
 
   return (
     <div className="space-y-7">
-      <div className="rounded-2xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 px-6 py-6 text-white shadow-sm">
-        <h1 className="font-serif text-2xl">Selamat datang kembali, Admin</h1>
-        <p className="text-sm text-emerald-50/90 mt-1">
+      <div className="rounded-2xl bg-gradient-to-br from-ink-900 via-ink-800 to-brand-800 px-7 py-7 text-white shadow-card relative overflow-hidden">
+        <div className="absolute -right-10 -top-16 h-52 w-52 rounded-full bg-brand-400/10" />
+        <h1 className="font-serif text-2xl relative">Selamat datang kembali</h1>
+        <p className="text-sm text-slate-300 mt-1 relative">
           Ringkasan anggaran &amp; pengajuan -- Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)}
         </p>
       </div>
@@ -245,12 +251,12 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-x-auto shadow-soft">
         <div className="p-5 pb-3 flex items-center justify-between">
           <p className="text-sm font-medium text-slate-900">Pengajuan Terbaru</p>
           <p className="text-xs text-slate-400">Diurutkan berdasarkan tanggal Nota Dinas terbaru</p>
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left text-xs text-slate-400 border-b border-slate-100 bg-slate-50/60">
               <th className="font-medium px-5 py-2.5">Tanggal</th>
@@ -308,8 +314,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
           ))}
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 border-t-0 rounded-t-none overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200/80 border-t-0 rounded-t-none overflow-x-auto shadow-soft">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="text-left text-xs text-slate-400 border-b border-slate-100 bg-slate-50/60">
                 <th className="font-medium px-4 py-2.5">{LAPORAN_TABS.find((t) => t.key === by)?.label}</th>
@@ -394,7 +400,7 @@ function StatCard({
     amber: "bg-amber-50 text-amber-600",
   };
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-soft hover:shadow-card transition-shadow">
       <div className="flex items-start justify-between">
         <p className="text-xs text-slate-500">{label}</p>
         <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${colorMap[color]}`}>

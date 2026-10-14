@@ -55,9 +55,17 @@ export async function addAkun(formData: FormData) {
     fail(createError?.message || "Gagal membuat akun.");
   }
 
-  const { error: profileError } = await admin
+  let { error: profileError } = await admin
     .from("profiles")
-    .insert({ id: created.user.id, username, nama: nama || null });
+    .insert({ id: created.user.id, username, nama: nama || null, email: usernameToEmail(username) });
+
+  // Kolom profiles.email baru ada setelah migrasi 20260802000000 dijalankan.
+  // Kalau belum, ulangi tanpa kolom itu supaya pembuatan akun tetap berjalan.
+  if (profileError && /email/i.test(profileError.message) && !/duplicate/i.test(profileError.message)) {
+    ({ error: profileError } = await admin
+      .from("profiles")
+      .insert({ id: created.user.id, username, nama: nama || null }));
+  }
 
   if (profileError) {
     // rollback akun auth kalau gagal simpan profil, supaya tidak ada akun "yatim"

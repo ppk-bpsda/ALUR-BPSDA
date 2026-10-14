@@ -29,28 +29,54 @@ function failLogin(message: string): never {
 /**
  * Daftar email kandidat untuk username yang diketik. Urutan:
  *  1) kalau input sudah berupa email (mengandung "@") -> pakai apa adanya
- *  2) email asli dari tabel profiles (paling akurat; butuh service key)
+ *  2) kolom profiles.email (SATU query -- jalur cepat, lihat migrasi
+ *     20260802000000). Bila kolom/isi belum ada, lanjut ke jalur lama:
+ *     profiles.id -> auth.admin.getUserById (2 panggilan berurutan)
  *  3) fallback pola lama <username>@<domain>
+ *
+ * PERFORMA: versi lama SELALU melakukan 2 panggilan jaringan berurutan
+ * (profiles lalu auth.admin.getUserById) sebelum sign-in. Sekarang cukup 1.
  */
-async function emailCandidates(username: string): Promise<string[]> {
+async function emailCandidates(username: string): Promise<{ list: string[]; profileId?: string; needsBackfill?: boolean }> {
   const clean = username.trim().toLowerCase();
-  if (clean.includes("@")) return [clean];
+  if (clean.includes("@")) return { list: [clean] };
 
   const out: string[] = [];
+  let profileId: string | undefined;
+  let needsBackfill = false;
+
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     try {
       const admin = createServiceClient();
-      const { data: profile } = await admin.from("profiles").select("id").eq("username", clean).maybeSingle();
+      let profile: { id?: string; email?: string | null } | null = null;
+
+      const fast = await admin.from("profiles").select("id, email").eq("username", clean).maybeSingle();
+      if (!fast.error) {
+        profile = fast.data;
+      } else {
+        // kolom email belum ada (migrasi belum dijalankan) -> query lama
+        const legacy = await admin.from("profiles").select("id").eq("username", clean).maybeSingle();
+        profile = legacy.data;
+      }
+
       if (profile?.id) {
-        const { data: u } = await admin.auth.admin.getUserById(profile.id);
-        if (u?.user?.email) out.push(u.user.email.toLowerCase());
+        profileId = profile.id;
+        if (profile.email) {
+          out.push(String(profile.email).toLowerCase());
+        } else {
+          const { data: u } = await admin.auth.admin.getUserById(profile.id);
+          if (u?.user?.email) {
+            out.push(u.user.email.toLowerCase());
+            needsBackfill = !fast.error; // kolom ada tapi masih kosong -> isi sekarang
+          }
+        }
       }
     } catch {
       // abaikan -- lanjut ke fallback pola lama
     }
   }
   for (const d of LEGACY_DOMAINS) out.push(`${clean}@${d}`);
-  return Array.from(new Set(out));
+  return { list: Array.from(new Set(out)), profileId, needsBackfill };
 }
 
 type AuthFailure = "salah" | "layanan" | "rate";
@@ -86,12 +112,21 @@ export async function login(formData: FormData) {
   let outcome: "ok" | AuthFailure = "salah";
   try {
     const supabase = await createClient();
-    const candidates = (await emailCandidates(username)).slice(0, 3);
+    const { list, profileId, needsBackfill } = await emailCandidates(username);
+    const candidates = list.slice(0, 3);
 
     for (const email of candidates) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (!error) {
         outcome = "ok";
+        // Isi cache email di profil supaya login berikutnya memakai jalur cepat.
+        if (needsBackfill && profileId) {
+          try {
+            await createServiceClient().from("profiles").update({ email }).eq("id", profileId);
+          } catch {
+            /* tidak kritis */
+          }
+        }
         break;
       }
       const kind = classify(error);

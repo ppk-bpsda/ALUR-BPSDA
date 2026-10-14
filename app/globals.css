@@ -1,3 +1,120 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-[#f4f6f8] text-slate-700;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  ::selection {
+    background: #bfe6dd;
+    color: #0b3b34;
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
+  }
+
+  /* Fokus konsisten & lembut untuk semua isian formulir lama maupun baru */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+  }
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible, a:focus-visible {
+    outline: 2px solid #4eab9b;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Scrollbar tipis */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  *::-webkit-scrollbar { width: 9px; height: 9px; }
+  *::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover { background: #94a3b8; background-clip: content-box; border: 2px solid transparent; }
+
+  /* Tabel: header lebih tenang & baris lebih lega */
+  thead th {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  table { border-collapse: collapse; }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-slate-200/80 shadow-soft;
+  }
+  .page-title {
+    @apply font-serif text-2xl text-slate-900 tracking-tight;
+  }
+  .page-sub {
+    @apply text-sm text-slate-500 mt-1 leading-relaxed;
+  }
+  .field-label {
+    @apply text-xs font-medium text-slate-600 mb-1.5 block;
+  }
+  .field {
+    @apply w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800
+           placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 text-sm font-medium rounded-lg px-4 py-2
+           transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-soft hover:bg-brand-700 active:scale-[0.99];
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300;
+  }
+  .btn-danger {
+    @apply btn bg-white text-rose-600 border border-rose-200 hover:bg-rose-50;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Skeleton shimmer untuk loading.tsx */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e8edf2;
+  border-radius: 0.5rem;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent);
+  animation: shimmer 1.4s infinite;
+}
