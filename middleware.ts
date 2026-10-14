@@ -51,8 +51,15 @@ export async function middleware(request: NextRequest) {
         },
       },
     });
-    const { data } = await supabase.auth.getUser();
-    user = data?.user ?? null;
+    // PERFORMA: getUser() = 1 panggilan jaringan ke Supabase Auth di SETIAP
+    // klik menu/halaman (inilah penyebab utama aplikasi terasa lemot). Di
+    // middleware cukup getSession(): membaca cookie secara lokal dan hanya
+    // menghubungi Supabase bila token perlu diperbarui. Verifikasi
+    // otoritatif tetap ada di lapisan lain: layout dashboard (getUser),
+    // seluruh API route (requireUser) dan RLS database (JWT divalidasi
+    // PostgREST pada setiap query) -- cookie palsu tidak bisa mengakses data.
+    const { data } = await supabase.auth.getSession();
+    user = data?.session?.user ?? null;
   } catch {
     // Supabase tidak terjangkau (mis. project free-tier sedang di-pause).
     user = null;
