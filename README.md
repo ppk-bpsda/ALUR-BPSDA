@@ -187,3 +187,31 @@ halaman "terjadi kendala" tanpa penjelasan). Tombol hapus/ubah status juga aman 
 - Form pengajuan menghitung "sisa anggaran" dari semua tahapan, sedangkan dokumen memakai tahapan <= tahapan
   dokumen. Selaraskan sesuai aturan bisnis yang diinginkan.
 - Tersedia `npm run typecheck`.
+
+## 11. Pembaruan: Kecepatan Login, Tampilan, dan Administrasi Perjalanan Dinas
+
+### 11.1 Langkah wajib setelah deploy
+1. Supabase > SQL Editor > jalankan `supabase/migrations/20260802000000_administrasi_perjalanan_dinas.sql`
+   (aman diulang; hanya **menambah** tabel berawalan `perjadin_`, bucket privat `perjalanan-dinas`, dan kolom
+   `profiles.email` untuk mempercepat login. Tidak mengubah/menghapus data lama). Migrasi juga mengisi
+   data awal **Data Pegawai (18 orang)** dan **SBU Uang Harian TA 2026 (35 tujuan)** dari file lampiran.
+2. Tanpa migrasi, aplikasi lama tetap berjalan normal; menu baru menampilkan petunjuk untuk menjalankannya.
+
+### 11.2 Penyebab login lemot & perbaikannya
+- Middleware memanggil `auth.getUser()` (panggilan jaringan ke Supabase) di **setiap** klik menu -> kini cek sesi lokal
+  (`getSession`); verifikasi otoritatif tetap di layout dashboard, semua API (`requireUser`) dan RLS.
+- Login melakukan 2 panggilan berurutan sebelum sign-in -> kini 1 (email disimpan di `profiles.email`;
+  akun lama terisi otomatis saat migrasi / login pertama).
+- Dashboard menjalankan 6 query satu per satu -> kini paralel (`Promise.all`).
+- Logo 963 KB + 296 KB dikecilkan menjadi 84 KB + 16 KB. Ditambah tombol "Memeriksa akun…" dan skeleton `loading.tsx`.
+- **Cek wilayah (penting):** pastikan *Function Region* di Vercel (Settings > Functions) sedekat mungkin dengan region
+  project Supabase (mis. keduanya Singapore/`sin1`). Region berbeda benua menambah ratusan ms pada setiap query.
+
+### 11.3 Menu Administrasi Perjalanan Dinas
+- **Kuitansi SPPD**: unggah Surat Tugas (+ Laporan opsional; .docx/.xlsx/.xls/.pdf, maks 4 MB) -> klik *Baca & isi
+  otomatis* -> periksa/koreksi -> simpan -> unduh `.docx`. Satu halaman kuitansi per pegawai.
+  Isian otomatis dicetak **merah**; tombol *Siap cetak* menghasilkan versi tanpa warna.
+- **Data Pegawai** dan **SBU Uang Harian**: dapat diubah/diimpor ulang dari Excel (SBU per Tahun Anggaran).
+- Program/kegiatan/sub kegiatan/belanja/kode rekening/PPTK diambil dari DPA yang ada; KPA & Bendahara dari menu Akun.
+- Template: `templates/Template_Kuitansi_SPPD.docx` diturunkan langsung dari berkas contoh Template_Kwitansi_GU.docx (semua tabel, lebar kolom, huruf, dan bingkai sama; ditambah baris Program/Kegiatan/Sub Kegiatan). Tag `{...}` berwarna merah; dapat diedit di Word.
+- PDF hasil scan (gambar) tidak dapat dibaca otomatis (tanpa OCR) -> isi formulir manual.

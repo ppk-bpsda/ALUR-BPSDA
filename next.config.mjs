@@ -49,6 +49,7 @@ const nextConfig = {
   // tidak ikut ter-bundle di Vercel -> "ENOENT" saat generate dokumen.
   outputFileTracingIncludes: {
     "/api/generate-dokumen": ["./templates/**/*"],
+    "/api/perjalanan-dinas/[id]/kuitansi": ["./templates/**/*"],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

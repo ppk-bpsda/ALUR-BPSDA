@@ -34,7 +34,7 @@ export default function AccountMenu({
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-slate-100 transition-colors"
       >
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-emerald-600 text-white text-xs flex items-center justify-center font-medium shrink-0">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-white text-xs flex items-center justify-center font-medium shrink-0">
           {initials}
         </div>
         <span className="text-sm text-slate-600 hidden sm:block">{displayName}</span>
@@ -42,7 +42,7 @@ export default function AccountMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-slate-200 shadow-lg py-2 z-50">
+        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border border-slate-200 shadow-lift py-2 z-50">
           <div className="px-4 py-2 border-b border-slate-100">
             <p className="text-sm font-medium text-slate-900">{displayName}</p>
             <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">

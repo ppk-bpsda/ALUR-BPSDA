@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, FileText, Building2, Wallet,
-  ClipboardList, ShieldCheck, FileSpreadsheet, Settings, LogOut,
+  LayoutDashboard, Building2, Wallet, ClipboardList, ShieldCheck,
+  FileSpreadsheet, Settings, LogOut, Plane, Users, BadgeDollarSign, X,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 
@@ -12,8 +13,14 @@ const navGroups = [
   { label: "Ringkasan", items: [{ icon: LayoutDashboard, name: "Dashboard", href: "/" }] },
   {
     label: "Transaksi",
+    items: [{ icon: ClipboardList, name: "Pengajuan Belanja", href: "/pengajuan" }],
+  },
+  {
+    label: "Administrasi Perjalanan Dinas",
     items: [
-      { icon: ClipboardList, name: "Pengajuan Belanja", href: "/pengajuan" },
+      { icon: Plane, name: "Kuitansi SPPD", href: "/perjalanan-dinas" },
+      { icon: Users, name: "Data Pegawai", href: "/perjalanan-dinas/pegawai" },
+      { icon: BadgeDollarSign, name: "SBU Uang Harian", href: "/perjalanan-dinas/sbu" },
     ],
   },
   {
@@ -26,9 +33,7 @@ const navGroups = [
   },
   {
     label: "Laporan",
-    items: [
-      { icon: FileSpreadsheet, name: "Rekap Realisasi", href: "/rekap" },
-    ],
+    items: [{ icon: FileSpreadsheet, name: "Rekap Realisasi", href: "/rekap" }],
   },
   {
     label: "Lainnya",
@@ -36,60 +41,105 @@ const navGroups = [
   },
 ];
 
+// Item aktif: cocok persis, atau prefix untuk sub-halaman -- kecuali bila ada
+// item lain yang lebih spesifik (mis. /perjalanan-dinas/pegawai).
+const allHrefs = navGroups.flatMap((g) => g.items.map((i) => i.href));
+function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  if (pathname === href) return true;
+  if (!pathname.startsWith(href + "/")) return false;
+  return !allHrefs.some((h) => h !== href && h.startsWith(href + "/") && (pathname === h || pathname.startsWith(h + "/")));
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const toggle = () => setOpen((v) => !v);
+    window.addEventListener("toggle-sidebar", toggle);
+    return () => window.removeEventListener("toggle-sidebar", toggle);
+  }, []);
+  useEffect(() => setOpen(false), [pathname]);
+
   return (
-    <aside className="w-64 bg-gradient-to-b from-blue-950 to-slate-950 text-white flex flex-col shrink-0 h-full overflow-y-auto">
-      <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10">
-        <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center shrink-0 overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-mark.png" alt="ALUR-BPSDA" width={36} height={36} className="object-cover" />
-        </div>
-        <div className="leading-tight">
-          <p className="text-xs tracking-widest bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-transparent font-semibold">
-            ALUR-BPSDA
-          </p>
-          <p className="text-xs text-blue-200/70 font-serif">SPJ Sekretariat Daerah</p>
-        </div>
-      </div>
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
-        {navGroups.map((group) => (
-          <div key={group.label}>
-            <p className="px-2 mb-2 text-xs tracking-widest text-blue-300/50 font-medium">
-              {group.label.toUpperCase()}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all ${
-                      active
-                        ? "bg-gradient-to-r from-blue-600/90 to-emerald-600/80 text-white shadow-md shadow-blue-900/40"
-                        : "text-blue-100/60 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                    <span className="text-left">{item.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-950/50 backdrop-blur-[2px] lg:hidden"
+          onClick={() => setOpen(false)}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-[17rem] lg:w-64 bg-ink-900 text-white flex flex-col shrink-0 h-full
+          transition-transform duration-200 ease-out ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      >
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-white/[0.07]">
+          <div className="h-9 w-9 rounded-xl bg-white flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-white/20">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-mark.png" alt="ALUR-BPSDA" width={36} height={36} className="object-cover" />
           </div>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-white/10">
-        <form action={logout}>
+          <div className="leading-tight flex-1 min-w-0">
+            <p className="text-[13px] tracking-[0.18em] text-brand-200 font-semibold">ALUR-BPSDA</p>
+            <p className="text-[11px] text-slate-400 font-serif truncate">SPJ Sekretariat Daerah</p>
+          </div>
           <button
-            type="submit"
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-blue-100/60 hover:bg-white/5 hover:text-white"
+            type="button"
+            className="lg:hidden text-slate-400 hover:text-white"
+            onClick={() => setOpen(false)}
+            aria-label="Tutup menu"
           >
-            <LogOut className="h-4 w-4" /> Keluar
+            <X className="h-5 w-5" />
           </button>
-        </form>
-      </div>
-    </aside>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-6">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p className="px-3 mb-2 text-[10px] tracking-[0.16em] text-slate-500 font-semibold uppercase">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors ${
+                        active
+                          ? "bg-white/[0.09] text-white font-medium"
+                          : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
+                      }`}
+                    >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand-300" />
+                      )}
+                      <item.icon
+                        className={`h-4 w-4 shrink-0 ${active ? "text-brand-300" : ""}`}
+                        strokeWidth={1.75}
+                      />
+                      <span className="text-left leading-snug">{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="p-3 border-t border-white/[0.07]">
+          <form action={logout}>
+            <button
+              type="submit"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] text-slate-400 hover:bg-white/[0.05] hover:text-white transition-colors"
+            >
+              <LogOut className="h-4 w-4" strokeWidth={1.75} /> Keluar
+            </button>
+          </form>
+        </div>
+      </aside>
+    </>
   );
 }
