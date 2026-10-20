@@ -15,3 +15,4 @@ export { Tabs } from "./Tabs";
 export type { TabItem } from "./Tabs";
 export { Tooltip } from "./Tooltip";
 export { Pagination } from "./Pagination";
+export { DashboardSkeleton, ListPageSkeleton, FormPageSkeleton, ReportSkeleton, SettingsSkeleton } from "./PageSkeletons";

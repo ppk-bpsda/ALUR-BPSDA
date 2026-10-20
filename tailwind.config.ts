@@ -110,6 +110,9 @@ const config: Config = {
       },
       animation: {
         "fade-up": "fade-up .35s ease-out both",
+        // Transisi antar-halaman: fill "backwards" (bukan "both") supaya tidak meninggalkan
+        // transform permanen yang bisa memengaruhi elemen position:fixed di dalam halaman.
+        "page-in": "fade-up .22s cubic-bezier(0.22,1,0.36,1) backwards",
         "fade-in": "fade-in .2s cubic-bezier(0.22,1,0.36,1) both",
         "scale-in": "scale-in .2s cubic-bezier(0.22,1,0.36,1) both",
         "slide-in-right": "slide-in-right .28s cubic-bezier(0.22,1,0.36,1) both",
