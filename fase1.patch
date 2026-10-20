@@ -1,0 +1,321 @@
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -1,5 +1,9 @@
+ import type { Config } from "tailwindcss";
+ 
++// Design token ALUR-BPSDA (Fase 1).
++// Arah visual: segar & muda tetapi tetap resmi -- teal + navy sebagai identitas,
++// satu aksen "citrus" (lime) dipakai hemat untuk sorotan, sudut membulat besar,
++// dan huruf Plus Jakarta Sans (diunggah lokal ke repo, patuh CSP font-src 'self').
+ const config: Config = {
+   content: [
+     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+@@ -8,16 +12,16 @@
+   theme: {
+     extend: {
+       fontFamily: {
+-        // Hanya font sistem (CSP font-src 'self') -- cepat, tanpa unduhan font.
++        // --font-jakarta diisi next/font/local di app/layout.tsx.
+         sans: [
+-          "Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI",
+-          "Roboto", "Helvetica Neue", "Arial", "sans-serif",
++          "var(--font-jakarta)", "Inter", "ui-sans-serif", "system-ui", "-apple-system",
++          "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif",
+         ],
++        // Tetap Georgia: dipakai tempat lain (mis. error/not-found) dan bukan bagian kertas dokumen.
+         serif: ["Georgia", "Cambria", "Times New Roman", "serif"],
+       },
+       colors: {
+-        // Palet utama: teal tenang + navy dalam (lebih lembut di mata
+-        // dibanding kombinasi biru-hijau terang sebelumnya).
++        // Identitas merek (tidak berubah).
+         brand: {
+           50: "#f0f9f7",
+           100: "#d6efe9",
+@@ -36,23 +40,81 @@
+           900: "#0e1a26",
+           950: "#09121b",
+         },
++        // Aksen citrus: sorotan kecil (indikator aktif, CTA utama sesekali, lencana "baru").
++        // Teks di atas aksen selalu ink-900.
++        accent: {
++          200: "#ecfa9e",
++          300: "#e2f66f",
++          400: "#d6f24b",
++          500: "#c3e02a",
++          600: "#9db816",
++        },
++        // Permukaan & garis (kanvas sedikit kehijauan, selaras teal).
++        canvas: "#f1f6f5",
++        surface: { DEFAULT: "#ffffff", muted: "#f6f9f9" },
++        line: { DEFAULT: "#e2e9ea", strong: "#cbd6d8" },
++        // Warna semantik: SATU sumber untuk status, galat, peringatan, info.
++        success: { 50: "#ecfdf3", 100: "#d1fae0", 200: "#a7f0c4", 600: "#15803d", 700: "#166534" },
++        warning: { 50: "#fffbeb", 100: "#fef3c7", 200: "#fde68a", 600: "#b45309", 700: "#92400e" },
++        danger: { 50: "#fff1f2", 100: "#ffe4e6", 200: "#fecdd3", 600: "#be123c", 700: "#9f1239" },
++        info: { 50: "#f0f9ff", 100: "#e0f2fe", 200: "#bae6fd", 600: "#0369a1", 700: "#075985" },
++      },
++      borderRadius: {
++        ctl: "0.75rem", // kontrol: tombol, isian
++        card: "1.25rem", // kartu, modal
++      },
++      fontSize: {
++        // Skala tipografi: [ukuran, {tinggi baris, jarak huruf, bobot}]
++        display: ["2rem", { lineHeight: "2.5rem", letterSpacing: "-0.025em", fontWeight: "700" }],
++        title: ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.02em", fontWeight: "700" }],
++        heading: ["1.125rem", { lineHeight: "1.75rem", letterSpacing: "-0.01em", fontWeight: "600" }],
++        body: ["0.875rem", { lineHeight: "1.5rem" }],
++        caption: ["0.75rem", { lineHeight: "1.125rem" }],
+       },
+       boxShadow: {
+         soft: "0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.05)",
+         card: "0 1px 2px rgba(15,23,42,0.04), 0 4px 16px -4px rgba(15,23,42,0.08)",
+         lift: "0 2px 4px rgba(15,23,42,0.05), 0 12px 28px -8px rgba(15,23,42,0.14)",
++        glow: "0 6px 18px -6px rgba(35,116,105,0.55)",
++      },
++      // Token gerak: cepat untuk umpan balik, sedang untuk panel, lambat untuk lembar besar.
++      transitionDuration: { fast: "120ms", base: "200ms", slow: "320ms" },
++      transitionTimingFunction: {
++        "out-soft": "cubic-bezier(0.22, 1, 0.36, 1)",
++        "in-soft": "cubic-bezier(0.64, 0, 0.78, 0)",
+       },
+       keyframes: {
+         "fade-up": {
+           "0%": { opacity: "0", transform: "translateY(6px)" },
+           "100%": { opacity: "1", transform: "translateY(0)" },
+         },
+-        shimmer: {
+-          "100%": { transform: "translateX(100%)" },
++        "fade-in": { "0%": { opacity: "0" }, "100%": { opacity: "1" } },
++        "scale-in": {
++          "0%": { opacity: "0", transform: "scale(0.96)" },
++          "100%": { opacity: "1", transform: "scale(1)" },
++        },
++        "slide-in-right": {
++          "0%": { opacity: "0", transform: "translateX(14px)" },
++          "100%": { opacity: "1", transform: "translateX(0)" },
++        },
++        "sheet-in": {
++          "0%": { opacity: "0", transform: "translateY(28px)" },
++          "100%": { opacity: "1", transform: "translateY(0)" },
++        },
++        "pulse-soft": {
++          "0%, 100%": { opacity: "1" },
++          "50%": { opacity: "0.55" },
+         },
++        // Catatan: keyframe "shimmer" untuk .skeleton sengaja ada di globals.css
++        // (Tailwind tidak menerbitkan keyframe yang hanya dirujuk dari CSS biasa).
+       },
+       animation: {
+         "fade-up": "fade-up .35s ease-out both",
++        "fade-in": "fade-in .2s cubic-bezier(0.22,1,0.36,1) both",
++        "scale-in": "scale-in .2s cubic-bezier(0.22,1,0.36,1) both",
++        "slide-in-right": "slide-in-right .28s cubic-bezier(0.22,1,0.36,1) both",
++        "sheet-in": "sheet-in .3s cubic-bezier(0.22,1,0.36,1) both",
++        "pulse-soft": "pulse-soft 1.6s ease-in-out infinite",
+       },
+     },
+   },
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -10,13 +10,17 @@
+     scroll-behavior: smooth;
+   }
+   body {
+-    @apply bg-[#f4f6f8] text-slate-700;
+-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
++    @apply bg-canvas text-slate-800; /* sama dengan warna teks body sebelumnya (dokumen cetak mewarisinya) */
+   }
+   ::selection {
+-    background: #bfe6dd;
+-    color: #0b3b34;
++    background: theme("colors.accent.300");
++    color: theme("colors.ink.900");
+   }
++
++  /* CATATAN PENTING: aturan global h1-h3, thead th, dan table di bawah ini
++     SENGAJA tidak diubah -- halaman cetak dokumen (app/dokumen/**) ikut memakainya
++     dan tampilan kertas harus identik. Gaya tabel/judul baru memakai kelas
++     (.tbl-*, .page-title) dan komponen di components/ui. */
+   h1, h2, h3 {
+     letter-spacing: -0.01em;
+   }
+@@ -35,10 +39,10 @@
+   button, a {
+     -webkit-tap-highlight-color: transparent;
+   }
++  /* Tidak lagi memaksa border-radius agar bentuk tombol bulat/pil tidak berubah saat fokus. */
+   button:focus-visible, a:focus-visible {
+-    outline: 2px solid #4eab9b;
++    outline: 2px solid theme("colors.brand.500");
+     outline-offset: 2px;
+-    border-radius: 6px;
+   }
+ 
+   /* Scrollbar tipis */
+@@ -55,7 +59,7 @@
+   }
+   *::-webkit-scrollbar-thumb:hover { background: #94a3b8; background-clip: content-box; border: 2px solid transparent; }
+ 
+-  /* Tabel: header lebih tenang & baris lebih lega */
++  /* Tabel lama: tidak diubah (lihat catatan di atas). */
+   thead th {
+     font-size: 0.6875rem;
+     text-transform: uppercase;
+@@ -64,56 +68,103 @@
+   table { border-collapse: collapse; }
+ }
+ 
+-/* Komponen memakai CSS biasa (bukan @apply token kustom) supaya build tetap
+-   berhasil walau tailwind.config.ts belum ikut diperbarui. */
++/* Komponen memakai CSS biasa + fungsi theme() (nilai diambil dari tailwind.config.ts),
++   jadi token tetap satu sumber. Kelas lama (.card, .btn, .field, .chip, .page-title...)
++   dipertahankan sebagai alias dengan tampilan baru supaya halaman yang belum
++   dimigrasi tetap konsisten. */
+ @layer components {
+   .card {
+-    background: #fff;
+-    border-radius: 1rem;
+-    border: 1px solid rgba(226, 232, 240, 0.8);
+-    box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.05);
++    background: theme("colors.surface.DEFAULT");
++    border-radius: theme("borderRadius.card");
++    border: 1px solid theme("colors.line.DEFAULT");
++    box-shadow: theme("boxShadow.soft");
+   }
+   .page-title {
+-    font-family: Georgia, Cambria, "Times New Roman", serif;
+-    font-size: 1.5rem; line-height: 2rem; color: #0f172a; letter-spacing: -0.01em;
++    font-size: 1.5rem; line-height: 2rem; font-weight: 700;
++    color: theme("colors.ink.900"); letter-spacing: -0.02em;
+   }
+   .page-sub { font-size: 0.875rem; color: #64748b; margin-top: 0.25rem; line-height: 1.6; }
+-  .field-label { display: block; font-size: 0.75rem; font-weight: 500; color: #475569; margin-bottom: 0.375rem; }
++
++  /* Isian */
++  .field-label { display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.375rem; }
+   .field {
+     width: 100%; font-size: 0.875rem; background: #fff; color: #1e293b;
+-    border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.5rem 0.75rem;
++    border: 1px solid theme("colors.line.strong"); border-radius: theme("borderRadius.ctl");
++    padding: 0.5rem 0.75rem;
+   }
+   .field::placeholder { color: #94a3b8; }
+-  .field:focus { border-color: #2f8f80; box-shadow: 0 0 0 4px #d6efe9; }
++  .field:hover:not(:disabled):not(:focus) { border-color: #b4c3c6; }
++  .field:focus { border-color: theme("colors.brand.500"); box-shadow: 0 0 0 4px theme("colors.brand.100"); }
++  .field:disabled { background: theme("colors.surface.muted"); color: #94a3b8; cursor: not-allowed; }
++  .field[aria-invalid="true"] { border-color: theme("colors.danger.600"); }
++  .field[aria-invalid="true"]:focus { box-shadow: 0 0 0 4px theme("colors.danger.100"); }
++
++  /* Tombol */
+   .btn {
+     display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+-    font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; padding: 0.5rem 1rem;
+-    transition: all 0.15s ease; cursor: pointer;
++    font-size: 0.875rem; font-weight: 600; border-radius: theme("borderRadius.ctl");
++    padding: 0.5rem 1rem; line-height: 1.25rem; white-space: nowrap;
++    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
++    cursor: pointer; -webkit-user-select: none; user-select: none;
+   }
++  .btn:active:not(:disabled) { transform: translateY(1px); }
+   .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+-  .btn-primary { background: #237469; color: #fff; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
+-  .btn-primary:hover:not(:disabled) { background: #205d55; }
+-  .btn-secondary { background: #fff; color: #334155; border: 1px solid #e2e8f0; }
+-  .btn-secondary:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
+-  .btn-danger { background: #fff; color: #e11d48; border: 1px solid #fecdd3; }
+-  .btn-danger:hover:not(:disabled) { background: #fff1f2; }
++  .btn-sm { font-size: 0.8125rem; padding: 0.3125rem 0.75rem; gap: 0.375rem; border-radius: 0.625rem; }
++  .btn-lg { font-size: 0.9375rem; padding: 0.625rem 1.25rem; }
++  .btn-icon { padding: 0.5rem; }
++  .btn-icon.btn-sm { padding: 0.375rem; }
++
++  .btn-primary { background: theme("colors.brand.600"); color: #fff; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
++  .btn-primary:hover:not(:disabled) { background: theme("colors.brand.700"); box-shadow: theme("boxShadow.glow"); }
++  .btn-accent { background: theme("colors.accent.400"); color: theme("colors.ink.900"); box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
++  .btn-accent:hover:not(:disabled) { background: theme("colors.accent.500"); }
++  .btn-secondary { background: #fff; color: #334155; border: 1px solid theme("colors.line.strong"); }
++  .btn-secondary:hover:not(:disabled) { background: theme("colors.surface.muted"); border-color: #b4c3c6; }
++  .btn-ghost { background: transparent; color: #475569; }
++  .btn-ghost:hover:not(:disabled) { background: rgba(15,23,42,0.06); color: theme("colors.ink.900"); }
++  .btn-danger { background: #fff; color: theme("colors.danger.600"); border: 1px solid theme("colors.danger.200"); }
++  .btn-danger:hover:not(:disabled) { background: theme("colors.danger.50"); }
++  .btn-danger-solid { background: theme("colors.danger.600"); color: #fff; }
++  .btn-danger-solid:hover:not(:disabled) { background: theme("colors.danger.700"); }
++
+   .chip {
+     display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 9999px;
+     padding: 0.125rem 0.625rem; font-size: 0.75rem; font-weight: 500;
+     box-shadow: inset 0 0 0 1px currentColor;
+   }
++
++  /* Tabel baru (komponen Table): judul kolom sentuhan lembut, bukan huruf kapital. */
++  .tbl { width: 100%; font-size: 0.875rem; }
++  .tbl thead th {
++    font-size: 0.75rem; text-transform: none; letter-spacing: 0; font-weight: 600;
++    color: #5b6b7e; background: theme("colors.surface.muted");
++    padding: 0.75rem 1rem; text-align: left; white-space: nowrap;
++    border-bottom: 1px solid theme("colors.line.DEFAULT");
++  }
++  .tbl tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid theme("colors.line.DEFAULT"); vertical-align: middle; }
++  .tbl tbody tr:last-child td { border-bottom: 0; }
++  .tbl tbody tr { transition: background-color 0.12s ease; }
++  .tbl tbody tr:hover { background: rgba(240, 249, 247, 0.6); }
++  .tbl-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
++  .tbl-sticky thead th { position: sticky; top: 0; z-index: 1; }
+ }
+ 
+ @media (prefers-reduced-motion: reduce) {
+-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
++  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
++  /* Indikator pemuatan tetap berputar pelan (esensial), tanpa kilatan. */
++  .animate-spin { animation-duration: 1.4s !important; animation-iteration-count: infinite !important; }
++  .skeleton::after { display: none; }
+ }
+ 
+-/* Skeleton shimmer untuk loading.tsx */
++/* Skeleton shimmer untuk loading.tsx -- keyframe didefinisikan di sini agar pasti ikut ter-build. */
++@keyframes shimmer {
++  100% { transform: translateX(100%); }
++}
+ .skeleton {
+   position: relative;
+   overflow: hidden;
+-  background: #e8edf2;
+-  border-radius: 0.5rem;
++  background: #e6edee;
++  border-radius: 0.625rem;
+ }
+ .skeleton::after {
+   content: "";
+--- a/app/layout.tsx
++++ b/app/layout.tsx
+@@ -1,5 +1,16 @@
+ import type { Metadata } from "next";
++import localFont from "next/font/local";
+ import "./globals.css";
++import { ToastProvider } from "@/components/ui/Toast";
++
++// Plus Jakarta Sans (lisensi OFL, lihat app/fonts/OFL-LICENSE.txt) -- diunggah lokal
++// sehingga patuh CSP font-src 'self'. Hanya subset latin (cukup untuk Bahasa Indonesia).
++const jakarta = localFont({
++  src: "./fonts/PlusJakartaSans-Variable.woff2",
++  variable: "--font-jakarta",
++  weight: "200 800",
++  display: "swap",
++});
+ 
+ export const metadata: Metadata = {
+   title: "ALUR-BPSDA | SPJ Sekretariat Daerah - Kota Batu",
+@@ -9,7 +20,9 @@
+ export default function RootLayout({ children }: { children: React.ReactNode }) {
+   return (
+     <html lang="id">
+-      <body className="font-sans antialiased bg-slate-50 text-slate-800">{children}</body>
++      <body className={`${jakarta.variable} font-sans antialiased`}>
++        <ToastProvider>{children}</ToastProvider>
++      </body>
+     </html>
+   );
+ }
