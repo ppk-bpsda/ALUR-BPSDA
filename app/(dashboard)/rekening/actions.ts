@@ -10,6 +10,9 @@ function fail(message: unknown): never {
   return failTo("/rekening", message);
 }
 
+// Kode rekening belanja saja (6 segmen), mis. 5.1.02.01.001.00024
+const POLA_KODE_BELANJA = /^\d\.\d\.\d{2}\.\d{2}\.\d{3}\.\d{5}$/;
+
 // ---------------------------------------------------------
 // TAMBAH -- rekening baru (atau rekening lama yang belum punya pagu di
 // tahapan aktif). rekening_belanja bersifat "master" per sub kegiatan +
@@ -22,15 +25,43 @@ export async function addRekening(formData: FormData) {
   const supabase = await createClient();
 
   const sub_kegiatan_id = String(formData.get("sub_kegiatan_id") || "");
-  const kode_rekening = String(formData.get("kode_rekening") || "").trim();
+  const kodeInput = String(formData.get("kode_rekening") || "").trim();
   const jenis_belanja = String(formData.get("jenis_belanja") || "").trim();
   const kelompok_belanja = String(formData.get("kelompok_belanja") || "").trim() || null;
   const sumber_dana = String(formData.get("sumber_dana") || "").trim();
   const pptk_id = String(formData.get("pptk_id") || "") || null;
   const pagu_anggaran = Number(formData.get("pagu_anggaran") || 0);
 
-  if (!sub_kegiatan_id || !kode_rekening || !jenis_belanja || !sumber_dana) {
+  if (!sub_kegiatan_id || !kodeInput || !jenis_belanja || !sumber_dana) {
     fail("Sub Kegiatan, Kode Rekening, Jenis Belanja, dan Sumber Dana wajib diisi.");
+  }
+  if (!Number.isFinite(pagu_anggaran) || pagu_anggaran < 0) {
+    fail("Pagu Anggaran harus berupa angka dan tidak boleh negatif.");
+  }
+
+  // Kode rekening harus LENGKAP = kode sub kegiatan + kode belanja. Kalau yang
+  // diisi hanya kode belanja (6 segmen), lengkapi otomatis; kalau awalannya
+  // tidak cocok dengan sub kegiatan yang dipilih, tolak supaya tidak salah
+  // tempat / dobel dengan baris lain.
+  const { data: subTerpilih } = await supabase
+    .from("sub_kegiatan")
+    .select("kode_sub_kegiatan")
+    .eq("id", sub_kegiatan_id)
+    .maybeSingle();
+  if (!subTerpilih) fail("Sub Kegiatan yang dipilih tidak ditemukan.");
+
+  const awalan = `${subTerpilih!.kode_sub_kegiatan}.`;
+  let kode_rekening = kodeInput;
+  if (POLA_KODE_BELANJA.test(kode_rekening)) {
+    kode_rekening = awalan + kode_rekening;
+  } else if (
+    !kode_rekening.startsWith(awalan) ||
+    !POLA_KODE_BELANJA.test(kode_rekening.slice(awalan.length))
+  ) {
+    fail(
+      `Kode Rekening tidak sesuai. Harus berformat ${awalan}X.X.XX.XX.XXX.XXXXX ` +
+        `(kode sub kegiatan terpilih + kode rekening belanja), atau cukup kode belanja saja.`
+    );
   }
 
   const { data: rekening, error: errRekening } = await supabase

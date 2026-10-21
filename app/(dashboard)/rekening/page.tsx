@@ -4,12 +4,21 @@ import { addRekening, updateRekening, deleteRekening, addKegiatan, addSubKegiata
 import { formatRupiah } from "@/lib/terbilang";
 import { kodeRekeningBelanja } from "@/lib/format";
 import { Trash2, Copy } from "lucide-react";
+import TambahRekeningFields from "./TambahRekeningFields";
 
 export default async function RekeningPage() {
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
 
-  const [{ data: dpaList }, { data: subKegiatan }, { data: pptkList }, { data: program }, { data: kegiatan }] =
+  const [
+    { data: dpaList },
+    { data: subKegiatan },
+    { data: pptkList },
+    { data: program },
+    { data: kegiatan },
+    { data: katalogBelanja },
+    { data: sumberDanaRef },
+  ] =
     await Promise.all([
       supabase
         .from("dpa")
@@ -36,13 +45,34 @@ export default async function RekeningPage() {
         .select("id, kode_kegiatan, nama_kegiatan, program_id")
         .eq("tahun_anggaran", tahun)
         .order("kode_kegiatan"),
+      // Katalog referensi (tabel ref_belanja / ref_sumber_dana). Kalau migrasi
+      // belum dijalankan, query ini mengembalikan data kosong -- halaman tetap normal.
+      supabase.from("ref_belanja").select("kode_belanja, nama_belanja").order("kode_belanja"),
+      supabase.from("ref_sumber_dana").select("nama").order("nama"),
     ]);
+
+  // Pilihan sumber dana = katalog + nilai yang sudah terpakai di baris rekening (tanpa duplikat)
+  const sumberDanaOpsi = Array.from(
+    new Map(
+      [
+        ...(sumberDanaRef ?? []).map((r: any) => String(r.nama ?? "").trim()),
+        ...(dpaList ?? []).map((r: any) => String(r.rekening?.sumber_dana ?? "").trim()),
+      ]
+        .filter(Boolean)
+        .map((v) => [v.toLowerCase(), v] as const)
+    ).values()
+  ).sort((a, b) => a.localeCompare(b));
 
   const totalPagu = (dpaList ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
   const tahapanLain = TAHAPAN_OPTIONS.filter((t) => t.value !== tahapan);
 
   return (
     <div className="space-y-6">
+      <datalist id="daftar-sumber-dana">
+        {sumberDanaOpsi.map((v) => (
+          <option key={v} value={v} />
+        ))}
+      </datalist>
       <div>
         <h1 className="font-serif text-xl text-slate-900">Rekening &amp; Pagu (DPA)</h1>
         <p className="text-sm text-slate-500">
@@ -154,6 +184,7 @@ export default async function RekeningPage() {
                   <td className="px-3 py-2">
                     <input
                       name="sumber_dana"
+                      list="daftar-sumber-dana"
                       defaultValue={row.rekening?.sumber_dana}
                       className="w-24 text-xs border border-slate-200 rounded-lg px-2 py-1.5 outline-none"
                     />
@@ -212,62 +243,18 @@ export default async function RekeningPage() {
       <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-5">
         <p className="text-sm font-medium text-slate-900 mb-3">+ Tambah Rekening &amp; Pagu Baru</p>
         <form action={addRekening} className="grid sm:grid-cols-6 gap-3 items-end">
-          <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Sub Kegiatan</label>
-            <select
-              name="sub_kegiatan_id"
-              required
-              defaultValue=""
-              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
-            >
-              <option value="" disabled>Pilih sub kegiatan</option>
-              {(subKegiatan ?? []).map((sk: any) => (
-                <option key={sk.id} value={sk.id}>
-                  {sk.kode_sub_kegiatan} -- {sk.nama_sub_kegiatan}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Kode Rekening (Lengkap)</label>
-            <input
-              name="kode_rekening"
-              required
-              placeholder="mis. 4.01.01.2.06.0002.5.1.02.01.001.00024"
-              className="w-full text-sm font-mono border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
-            />
-            <p className="text-[10px] text-slate-400 mt-1">
-              Selalu isi kode LENGKAP (kode sub kegiatan + kode rekening belanja), sama seperti tahapan
-              lain -- jangan isi kode rekening belanja saja (19 karakter terakhir), supaya tidak dobel.
-            </p>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Uraian Belanja</label>
-            <input
-              name="jenis_belanja"
-              required
-              placeholder="mis. Belanja Alat Tulis Kantor"
-              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
-            />
-          </div>
-          <div className="sm:col-span-1">
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Jenis Rek.</label>
-            <select
-              name="kelompok_belanja"
-              defaultValue="Belanja Barang/Jasa"
-              title='Menentukan isi kolom "Jenis Rek." di Nota Dinas'
-              className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
-            >
-              <option value="Belanja Barang/Jasa">Belanja Barang/Jasa</option>
-              <option value="Belanja Modal">Belanja Modal</option>
-            </select>
-          </div>
+          <TambahRekeningFields
+            subKegiatan={(subKegiatan ?? []) as any}
+            katalog={(katalogBelanja ?? []) as any}
+          />
           <div className="sm:col-span-1">
             <label className="text-xs font-medium text-slate-600 mb-1 block">Sumber Dana</label>
             <input
               name="sumber_dana"
+              list="daftar-sumber-dana"
               required
               placeholder="PAD"
+              autoComplete="off"
               className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white"
             />
           </div>
