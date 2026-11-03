@@ -215,3 +215,23 @@ halaman "terjadi kendala" tanpa penjelasan). Tombol hapus/ubah status juga aman 
 - Program/kegiatan/sub kegiatan/belanja/kode rekening/PPTK diambil dari DPA yang ada; KPA & Bendahara dari menu Akun.
 - Template: `templates/Template_Kuitansi_SPPD.docx` diturunkan langsung dari berkas contoh Template_Kwitansi_GU.docx (semua tabel, lebar kolom, huruf, dan bingkai sama; ditambah baris Program/Kegiatan/Sub Kegiatan). Tag `{...}` berwarna merah; dapat diedit di Word.
 - PDF hasil scan (gambar) tidak dapat dibaca otomatis (tanpa OCR) -> isi formulir manual.
+
+## 12. Pembaruan: Reset Akun, Tanggal PPTK di SPP, Pagu per Tahapan via Excel
+
+### 12.1 Lupa username/kata sandi Admin
+- **Jalur SQL (tanpa komputer developer):** Supabase > SQL Editor > buka `supabase/manual/reset_admin.sql`.
+  Jalankan LANGKAH 1 (melihat semua username), lalu isi `v_username` & `v_password` di LANGKAH 2 dan jalankan.
+- **Jalur skrip:** isi `.env.local`, lalu `npm run reset-admin -- --list` (lihat akun) dan
+  `npm run reset-admin -- --username admin` (sandi baru ditanyakan, tidak tampil di layar). Akun dibuat bila belum ada.
+- **Setelah bisa login:** menu *Akses Aplikasi* kini punya tombol atur ulang kata sandi per akun dan "Ganti kata sandi saya".
+
+### 12.2 SPP/SPTJB
+Di atas "PEJABAT PELAKSANA TEKNIS KEGIATAN" kini tercetak `Batu, <tanggal Nota Dinas>` (pratinjau/cetak dan unduhan .docx).
+
+### 12.3 Pagu sesuai tahapan anggaran
+1. Jalankan `supabase/migrations/20260804000000_anggaran_log.sql` (tabel riwayat; opsional, aplikasi tetap jalan tanpanya).
+2. Menu **Rekening & Pagu**: klik angka pagu untuk ubah langsung; tombol Tambah rekening, Salin dari tahapan lain,
+   Unduh Excel, dan **Unggah Excel**. Kolom Realisasi/Sisa dihitung otomatis (akumulasi s/d tahapan aktif).
+3. **Unggah Excel** (`/rekening/import`): pilih tahun + tahapan tujuan, unduh data tahapan sebelumnya, ubah pagu/tambah baris,
+   unggah, lihat pratinjau, lalu simpan. Rekening/sub kegiatan baru dibuat otomatis. Setiap perubahan tercatat di "Riwayat perubahan pagu".
+4. Isi *Tanggal penetapan* agar transaksi bertanggal setelahnya otomatis memakai pagu tahapan baru.

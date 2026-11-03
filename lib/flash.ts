@@ -45,3 +45,9 @@ export function failTo(path: string, message: unknown): never {
   const sep = path.includes("?") ? "&" : "?";
   redirect(`${path}${sep}galat=${encodeURIComponent(text)}`);
 }
+
+/** Pesan sukses (banner hijau) di halaman tujuan. */
+export function okTo(path: string, message: string): never {
+  const sep = path.includes("?") ? "&" : "?";
+  redirect(`${path}${sep}ok=${encodeURIComponent(message)}`);
+}
