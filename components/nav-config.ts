@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Building2, Wallet, ClipboardList, ShieldCheck,
-  FileSpreadsheet, Settings, Plane, Users, BadgeDollarSign, Plus, Upload, CalendarRange,
+  FileSpreadsheet, Settings, Plane, Users, BadgeDollarSign, Plus, Upload, CalendarRange, GitCompare, CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +36,8 @@ export const navGroups: NavGroup[] = [
     label: "Master Data",
     items: [
       { icon: Wallet, name: "Rekening & Pagu (DPA)", href: "/rekening", keywords: "dpa anggaran kode rekening" },
+      { icon: GitCompare, name: "Perbandingan Pagu Tahapan", href: "/rekap-pagu", keywords: "pagu murni pergeseran perubahan selisih kegiatan sub kegiatan" },
+      { icon: CalendarClock, name: "Anggaran Kas (Triwulan)", href: "/anggaran-kas", keywords: "kas triwulan tw anggaran kas" },
       { icon: ShieldCheck, name: "Manajemen Akun (KPA/PPTK/BPP)", href: "/pejabat", keywords: "pejabat kpa pptk bpp bendahara" },
       { icon: Building2, name: "Penyedia Barang/Jasa", href: "/penyedia", keywords: "vendor rekanan toko" },
     ],
@@ -54,6 +56,7 @@ export const navGroups: NavGroup[] = [
 export const extraCommands: Array<{ name: string; href: string; hint: string; icon: LucideIcon; keywords: string }> = [
   { name: "Buat pengajuan belanja baru", href: "/pengajuan/baru", hint: "Tindakan", icon: Plus, keywords: "tambah baru spj" },
   { name: "Impor pengajuan dari Excel", href: "/pengajuan/import", hint: "Tindakan", icon: Upload, keywords: "import unggah excel xlsx" },
+  { name: "Impor / perbarui pagu dari Excel", href: "/rekening/import", hint: "Tindakan", icon: Upload, keywords: "pagu perubahan pergeseran excel sub kegiatan belanja baru" },
   { name: "Buat kuitansi SPPD baru", href: "/perjalanan-dinas/baru", hint: "Tindakan", icon: Plane, keywords: "tambah perjadin sppd" },
   { name: "Ganti periode (tahun & tahapan)", href: "/periode", hint: "Tindakan", icon: CalendarRange, keywords: "tahun anggaran tahapan murni pergeseran perubahan" },
   { name: "Akses aplikasi (akun login)", href: "/akun", hint: "Tindakan", icon: ShieldCheck, keywords: "akun password sandi pengguna" },
@@ -83,6 +86,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   pejabat: "Manajemen Akun",
   penyedia: "Penyedia Barang/Jasa",
   rekap: "Rekap Realisasi",
+  "rekap-pagu": "Perbandingan Pagu",
+  "anggaran-kas": "Anggaran Kas",
   laporan: "Laporan",
   pengaturan: "Pengaturan",
   periode: "Periode",

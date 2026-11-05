@@ -3,7 +3,8 @@ import { getPeriode, tahapanLabel, TAHAPAN_OPTIONS } from "@/lib/periode";
 import { addRekening, updateRekening, deleteRekening, addKegiatan, addSubKegiatan, salinDariTahapan } from "./actions";
 import { formatRupiah } from "@/lib/terbilang";
 import { kodeRekeningBelanja } from "@/lib/format";
-import { Trash2, Copy } from "lucide-react";
+import Link from "next/link";
+import { Trash2, Copy, FileSpreadsheet } from "lucide-react";
 import TambahRekeningFields from "./TambahRekeningFields";
 
 export default async function RekeningPage() {
@@ -79,6 +80,12 @@ export default async function RekeningPage() {
           Tahun Anggaran {tahun}, Tahapan {tahapanLabel(tahapan)}. Tambah/edit/hapus rekening dan pagu
           untuk tahapan ini -- ganti periode lewat menu akun di kanan atas untuk mengelola tahapan lain.
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Link href="/rekening/import" className="btn-primary"><FileSpreadsheet className="h-4 w-4" /> Impor / perbarui pagu dari Excel</Link>
+        <Link href="/rekap-pagu" className="btn-secondary">Perbandingan pagu antartahapan</Link>
+        <Link href="/anggaran-kas" className="btn-secondary">Anggaran kas triwulanan</Link>
       </div>
 
       {tahapanLain.length > 0 && (

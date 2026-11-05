@@ -1,32 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { deteksiJenis, MAKS_UKURAN_BERKAS } from "./extract";
 import type { InputPerjadin } from "./simpan";
-
-const BUCKET = "perjalanan-dinas";
-
-async function unggah(
-  supabase: SupabaseClient, perjadinId: string, kind: "surat_tugas" | "laporan", f: unknown
-): Promise<{ path: string; nama: string } | { error: string } | null> {
-  if (!(f instanceof File) || f.size === 0) return null;
-  if (f.size > MAKS_UKURAN_BERKAS) return { error: `Berkas ${f.name} melebihi 4 MB.` };
-  const buf = Buffer.from(await f.arrayBuffer());
-  const jenis = deteksiJenis(f.name, buf);
-  if (!jenis) return { error: `Berkas ${f.name} tidak didukung (gunakan .docx, .xlsx/.xls, atau .pdf).` };
-  const ext = f.name.toLowerCase().split(".").pop()!.replace(/[^a-z0-9]/g, "");
-  const path = `${perjadinId}/${kind}-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, buf, {
-    contentType: f.type || "application/octet-stream", upsert: false,
-  });
-  if (error) return { error: `Gagal menyimpan berkas ${f.name}: ${error.message}` };
-  return { path, nama: f.name.slice(0, 200) };
-}
 
 /** Insert (id=null) atau update administrasi perjalanan dinas + peserta + berkas. */
 export async function simpanPerjadin(
   supabase: SupabaseClient,
   a: {
     id: string | null; userId: string; input: InputPerjadin; lama: number; tahun: number;
-    suratTugas: unknown; laporan: unknown;
   }
 ): Promise<{ ok: true; id: string; peringatan: string[] } | { ok: false; error: string }> {
   const { input } = a;
@@ -93,17 +72,6 @@ export async function simpanPerjadin(
     }))
   );
   if (eIns) return { ok: false, error: eIns.message };
-
-  // Berkas (kegagalan unggah tidak membatalkan data -- hanya diberi peringatan)
-  const patch: Record<string, unknown> = {};
-  for (const [kind, f] of [["surat_tugas", a.suratTugas], ["laporan", a.laporan]] as const) {
-    const r = await unggah(supabase, id!, kind, f);
-    if (!r) continue;
-    if ("error" in r) { peringatan.push(r.error); continue; }
-    patch[`${kind}_path`] = r.path;
-    patch[`${kind}_nama`] = r.nama;
-  }
-  if (Object.keys(patch).length) await supabase.from("perjadin").update(patch).eq("id", id!);
 
   return { ok: true, id: id!, peringatan };
 }

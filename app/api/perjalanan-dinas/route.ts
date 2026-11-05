@@ -23,8 +23,7 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const res = await simpanPerjadin(supabase, {
     id: null, userId: auth.user.id, input: v.data, lama: v.lama_hari,
-    tahun: Number(raw.tahun_anggaran) || new Date().getFullYear(),
-    suratTugas: form.get("surat_tugas"), laporan: form.get("laporan"),
+    tahun: Number(raw.tahun_anggaran) || new Date().getFullYear()
   });
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
   return NextResponse.json({ id: res.id, peringatan: res.peringatan });

@@ -1,11 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  UploadCloud, Wand2, Loader2, FileText, X, Plus, Trash2, Search, AlertTriangle,
-  CheckCircle2, Download, Sparkles, Info,
-} from "lucide-react";
+import { Loader2, X, Plus, Trash2, Search, CheckCircle2, Download } from "lucide-react";
 import type { PegawaiOpt, SbuOpt, DpaOpt } from "@/lib/perjadin/loaders";
 
 export type PerjadinInitial = {
@@ -18,7 +15,6 @@ export type PerjadinInitial = {
   dpa_id: string; tanggal_kuitansi: string; nomor_kuitansi: string;
   dasar_penugasan: string; hasil_kegiatan: string;
   pegawai_ids: string[];
-  surat_tugas_nama?: string | null; laporan_nama?: string | null;
 };
 
 const KOSONG: PerjadinInitial = {
@@ -35,14 +31,6 @@ const hari = (a: string, b: string) => {
 const tarifDari = (s: SbuOpt | undefined, j: PerjadinInitial["jenis_tarif"]) =>
   !s ? 0 : j === "rapat" ? s.uang_harian_rapat : j === "diklat" ? s.uang_harian_diklat : s.uang_harian_perjalanan;
 
-function Auto() {
-  return (
-    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-px text-[10px] font-medium text-rose-600 ring-1 ring-inset ring-rose-100">
-      <Sparkles className="h-2.5 w-2.5" /> otomatis
-    </span>
-  );
-}
-
 function Section({ no, title, desc, children }: { no: number; title: string; desc?: string; children: React.ReactNode }) {
   return (
     <section className="card p-5 sm:p-6">
@@ -58,43 +46,6 @@ function Section({ no, title, desc, children }: { no: number; title: string; des
   );
 }
 
-function FileBox({ label, file, setFile, tersimpan, wajib }: {
-  label: string; file: File | null; setFile: (f: File | null) => void; tersimpan?: string | null; wajib?: boolean;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  const [drag, setDrag] = useState(false);
-  return (
-    <div>
-      <span className="field-label">{label}{wajib && <span className="text-rose-500"> *</span>}</span>
-      <div
-        onClick={() => ref.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) setFile(f); }}
-        className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${drag ? "border-brand-400 bg-brand-50" : "border-slate-200 hover:border-brand-300 hover:bg-slate-50/70"}`}
-      >
-        <input ref={ref} type="file" className="hidden" accept=".docx,.xlsx,.xls,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        {file ? (
-          <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
-            <FileText className="h-4 w-4 text-brand-600 shrink-0" />
-            <span className="truncate max-w-[16rem]">{file.name}</span>
-            <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); if (ref.current) ref.current.value = ""; }} className="text-slate-400 hover:text-rose-500" aria-label="Hapus berkas">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <UploadCloud className="h-6 w-6 mx-auto text-slate-400" strokeWidth={1.5} />
-            <p className="text-sm text-slate-600 mt-1.5">Klik atau seret berkas ke sini</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Word (.docx), Excel (.xlsx/.xls), PDF · maks. 4 MB</p>
-          </>
-        )}
-      </div>
-      {tersimpan && !file && <p className="text-[11px] text-slate-500 mt-1.5">Tersimpan: {tersimpan} (unggah baru untuk mengganti)</p>}
-    </div>
-  );
-}
-
 export default function PerjadinForm(props: {
   tahun: number; pegawai: PegawaiOpt[]; sbu: SbuOpt[]; dpa: DpaOpt[]; initial?: PerjadinInitial;
 }) {
@@ -102,23 +53,14 @@ export default function PerjadinForm(props: {
   const router = useRouter();
   const edit = !!props.initial?.id;
   const [f, setF] = useState<PerjadinInitial>(props.initial ?? KOSONG);
-  const [fileST, setFileST] = useState<File | null>(null);
-  const [fileLap, setFileLap] = useState<File | null>(null);
-  const [auto, setAuto] = useState<Set<string>>(new Set());
   const [tarifManual, setTarifManual] = useState(edit);
-  const [catatan, setCatatan] = useState<string[]>([]);
-  const [hasil, setHasil] = useState<unknown>(null);
-  const [membaca, setMembaca] = useState(false);
   const [menyimpan, setMenyimpan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sukses, setSukses] = useState<{ id: string; peringatan: string[] } | null>(null);
   const [cari, setCari] = useState("");
   const [semuaRek, setSemuaRek] = useState(false);
 
-  const set = <K extends keyof PerjadinInitial>(k: K, v: PerjadinInitial[K]) => {
-    setF((p) => ({ ...p, [k]: v }));
-    setAuto((a) => { if (!a.has(k as string)) return a; const n = new Set(a); n.delete(k as string); return n; });
-  };
+  const set = <K extends keyof PerjadinInitial>(k: K, v: PerjadinInitial[K]) => setF((p) => ({ ...p, [k]: v }));
 
   const sbuTerpilih = sbu.find((s) => s.tujuan === f.tujuan_provinsi);
   const lama = hari(f.tanggal_berangkat, f.tanggal_kembali);
@@ -134,46 +76,6 @@ export default function PerjadinForm(props: {
     }));
   }
 
-  async function bacaOtomatis() {
-    if (!fileST) { setError("Unggah berkas Surat Tugas terlebih dahulu."); return; }
-    setError(null); setMembaca(true);
-    try {
-      const fd = new FormData();
-      fd.set("surat_tugas", fileST);
-      if (fileLap) fd.set("laporan", fileLap);
-      const res = await fetch("/api/perjalanan-dinas/ekstrak", { method: "POST", body: fd });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error || "Gagal membaca berkas.");
-      const h = j.hasil;
-      const baru = new Set<string>();
-      const next = { ...f };
-      const isi = <K extends keyof PerjadinInitial>(k: K, v: PerjadinInitial[K] | undefined) => {
-        if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return;
-        next[k] = v as PerjadinInitial[K]; baru.add(k as string);
-      };
-      isi("nomor_surat_tugas", h.nomor_surat_tugas);
-      isi("tanggal_surat_tugas", h.tanggal_surat_tugas);
-      isi("maksud", h.maksud);
-      isi("tujuan_kota", h.tujuan_kota);
-      isi("tanggal_berangkat", h.tanggal_berangkat);
-      isi("tanggal_kembali", h.tanggal_kembali);
-      isi("pegawai_ids", h.peserta_ids);
-      if (h.tujuan_provinsi && sbu.some((s) => s.tujuan === h.tujuan_provinsi)) {
-        next.tujuan_provinsi = h.tujuan_provinsi; baru.add("tujuan_provinsi");
-        next.tarif_uang_harian = tarifDari(sbu.find((s) => s.tujuan === h.tujuan_provinsi), next.jenis_tarif);
-        baru.add("tarif_uang_harian"); setTarifManual(false);
-      } else if (h.tujuan_provinsi) {
-        h.catatan.push(`Tujuan "${h.tujuan_provinsi}" tidak ada pada tabel SBU — pilih manual.`);
-      }
-      if (!next.tanggal_kuitansi && next.tanggal_kembali) { next.tanggal_kuitansi = next.tanggal_kembali; baru.add("tanggal_kuitansi"); }
-      setF(next); setAuto(baru); setCatatan(h.catatan ?? []); setHasil(h);
-    } catch (e: any) {
-      setError(e?.message || "Gagal membaca berkas.");
-    } finally {
-      setMembaca(false);
-    }
-  }
-
   async function simpan() {
     setError(null); setSukses(null);
     if (!f.maksud.trim()) return setError("Maksud/uraian perjalanan dinas wajib diisi.");
@@ -184,9 +86,7 @@ export default function PerjadinForm(props: {
     setMenyimpan(true);
     try {
       const fd = new FormData();
-      fd.set("data", JSON.stringify({ ...f, tahun_anggaran: tahun, hasil_ekstraksi: hasil }));
-      if (fileST) fd.set("surat_tugas", fileST);
-      if (fileLap) fd.set("laporan", fileLap);
+      fd.set("data", JSON.stringify({ ...f, tahun_anggaran: tahun }));
       const res = await fetch(edit ? `/api/perjalanan-dinas/${props.initial!.id}` : "/api/perjalanan-dinas", {
         method: edit ? "PUT" : "POST", body: fd,
       });
@@ -194,7 +94,6 @@ export default function PerjadinForm(props: {
       if (!res.ok) throw new Error(j.error || "Gagal menyimpan.");
       if (!edit) { router.push(`/perjalanan-dinas/${j.id}?tersimpan=1`); return; }
       setSukses({ id: j.id, peringatan: j.peringatan ?? [] });
-      setFileST(null); setFileLap(null);
       router.refresh();
     } catch (e: any) {
       setError(e?.message || "Gagal menyimpan.");
@@ -209,60 +108,34 @@ export default function PerjadinForm(props: {
   }, [pegawai, cari]);
   const dpaTampil = dpa.filter((d) => semuaRek || d.perjalanan || d.id === f.dpa_id);
   const dpaDipilih = dpa.find((d) => d.id === f.dpa_id);
-  const A = (k: string) => auto.has(k) && <Auto />;
 
   return (
     <div className="space-y-5">
-      {/* 1. Berkas */}
-      <Section no={1} title="Impor dari Berkas (opsional)" desc="Bila Surat Tugas sudah ada, unggah untuk mengisi formulir otomatis. Bila belum, lewati langkah ini dan isi formulir di bawah — Surat Tugas & Laporan dibuat oleh sistem.">
-        <div className="grid sm:grid-cols-2 gap-4">
-          <FileBox label="Surat Tugas (berkas lama)" file={fileST} setFile={setFileST} tersimpan={props.initial?.surat_tugas_nama} />
-          <FileBox label="Laporan Perjalanan Dinas (berkas lama)" file={fileLap} setFile={setFileLap} tersimpan={props.initial?.laporan_nama} />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" onClick={bacaOtomatis} disabled={membaca || !fileST} className="btn-primary">
-            {membaca ? <><Loader2 className="h-4 w-4 animate-spin" /> Membaca berkas…</> : <><Wand2 className="h-4 w-4" /> Baca &amp; isi otomatis</>}
-          </button>
-          <p className="text-xs text-slate-500">Berkas hasil scan (gambar) tidak dapat dibaca — isi formulir secara manual.</p>
-        </div>
-        {catatan.length > 0 && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p className="font-medium flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Mohon periksa:</p>
-            <ul className="mt-1.5 list-disc pl-5 space-y-0.5 text-[13px]">{catatan.map((c, i) => <li key={i}>{c}</li>)}</ul>
-          </div>
-        )}
-        {auto.size > 0 && (
-          <p className="mt-3 text-xs text-slate-500 flex items-center gap-1.5">
-            <Info className="h-3.5 w-3.5" /> Isian bertanda <Auto /> diambil dari berkas. Pada dokumen Kuitansi, data otomatis dicetak dengan <span className="text-red-600 font-medium">teks merah</span>.
-          </p>
-        )}
-      </Section>
-
       {/* 2. Data surat */}
       <Section no={2} title="Data Surat Tugas &amp; Waktu Pelaksanaan">
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="field-label">Nomor Surat Tugas{A("nomor_surat_tugas")}</label>
+            <label className="field-label">Nomor Surat Tugas</label>
             <input className="field" value={f.nomor_surat_tugas} onChange={(e) => set("nomor_surat_tugas", e.target.value)} placeholder="mis. 800.1.11.1/045/422.101/2026" />
           </div>
           <div>
-            <label className="field-label">Tanggal Surat Tugas{A("tanggal_surat_tugas")}</label>
+            <label className="field-label">Tanggal Surat Tugas</label>
             <input type="date" className="field" value={f.tanggal_surat_tugas} onChange={(e) => set("tanggal_surat_tugas", e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <label className="field-label">Maksud / Uraian Perjalanan Dinas <span className="text-rose-500">*</span>{A("maksud")}</label>
+            <label className="field-label">Maksud / Uraian Perjalanan Dinas <span className="text-rose-500">*</span></label>
             <textarea rows={3} className="field" value={f.maksud} onChange={(e) => set("maksud", e.target.value)} placeholder="mis. menghadiri Rapat Koordinasi Pengelolaan Sumber Daya Air" />
           </div>
           <div>
-            <label className="field-label">Tanggal Berangkat <span className="text-rose-500">*</span>{A("tanggal_berangkat")}</label>
+            <label className="field-label">Tanggal Berangkat <span className="text-rose-500">*</span></label>
             <input type="date" className="field" value={f.tanggal_berangkat} onChange={(e) => set("tanggal_berangkat", e.target.value)} />
           </div>
           <div>
-            <label className="field-label">Tanggal Kembali <span className="text-rose-500">*</span>{A("tanggal_kembali")}</label>
+            <label className="field-label">Tanggal Kembali <span className="text-rose-500">*</span></label>
             <input type="date" className="field" min={f.tanggal_berangkat || undefined} value={f.tanggal_kembali} onChange={(e) => set("tanggal_kembali", e.target.value)} />
           </div>
           <div>
-            <label className="field-label">Tanggal Kuitansi{A("tanggal_kuitansi")}</label>
+            <label className="field-label">Tanggal Kuitansi</label>
             <input type="date" className="field" value={f.tanggal_kuitansi} onChange={(e) => set("tanggal_kuitansi", e.target.value)} />
           </div>
           <div>
@@ -288,14 +161,14 @@ export default function PerjadinForm(props: {
       <Section no={3} title="Tujuan &amp; Tarif Uang Harian (SBU)" desc={`Tarif diambil dari tabel SBU Tahun Anggaran ${tahun}.`}>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="field-label">Provinsi / Tujuan (SBU){A("tujuan_provinsi")}</label>
-            <select className="field" value={f.tujuan_provinsi} onChange={(e) => { setTarifManual(false); pilihTujuan(e.target.value, f.jenis_tarif, true); setAuto((a) => { const n = new Set(a); n.delete("tujuan_provinsi"); return n; }); }}>
+            <label className="field-label">Provinsi / Tujuan (SBU)</label>
+            <select className="field" value={f.tujuan_provinsi} onChange={(e) => { setTarifManual(false); pilihTujuan(e.target.value, f.jenis_tarif, true);  }}>
               <option value="">— pilih tujuan —</option>
               {sbu.map((s) => <option key={s.id} value={s.tujuan}>{s.tujuan}</option>)}
             </select>
           </div>
           <div>
-            <label className="field-label">Kota / Lokasi Kegiatan{A("tujuan_kota")}</label>
+            <label className="field-label">Kota / Lokasi Kegiatan</label>
             <input className="field" value={f.tujuan_kota} onChange={(e) => set("tujuan_kota", e.target.value)} placeholder="mis. Surabaya" />
           </div>
           <div>
@@ -307,7 +180,7 @@ export default function PerjadinForm(props: {
             </select>
           </div>
           <div>
-            <label className="field-label">Tarif per Orang per Hari (Rp){A("tarif_uang_harian")}</label>
+            <label className="field-label">Tarif per Orang per Hari (Rp)</label>
             <input type="number" min={0} className="field" value={f.tarif_uang_harian} onChange={(e) => { setTarifManual(true); set("tarif_uang_harian", Number(e.target.value)); }} />
           </div>
         </div>
@@ -331,7 +204,7 @@ export default function PerjadinForm(props: {
                 </span>
               ) : null;
             })}
-            {auto.has("pegawai_ids") && <Auto />}
+            
           </div>
         )}
         <div className="relative mb-2">

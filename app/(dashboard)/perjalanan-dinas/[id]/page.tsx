@@ -45,8 +45,6 @@ export default async function PerjadinDetailPage(props: {
     dasar_penugasan: pj.dasar_penugasan ?? "",
     hasil_kegiatan: pj.hasil_kegiatan ?? "",
     pegawai_ids: [...(pj.peserta ?? [])].sort((a: any, b: any) => a.urut - b.urut).map((p: any) => p.pegawai_id).filter(Boolean),
-    surat_tugas_nama: pj.surat_tugas_nama,
-    laporan_nama: pj.laporan_nama,
   };
 
   return (
@@ -68,14 +66,14 @@ export default async function PerjadinDetailPage(props: {
 
       {sp.tersimpan && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" /> Data tersimpan. Surat Tugas (berkop), Laporan Perjalanan Dinas (tanpa kop), dan Kuitansi SPPD siap diunduh. Teks <span className="text-red-600 font-medium">merah</span> = isian otomatis sistem; gunakan &quot;Siap cetak&quot; untuk versi tanpa warna.
+          <CheckCircle2 className="h-4 w-4" /> Data tersimpan. Surat Tugas (berkop), Laporan Perjalanan Dinas (tanpa kop), dan Kuitansi SPPD siap diunduh. Pada Kuitansi, teks <span className="text-red-600 font-medium">merah</span> = isian otomatis; gunakan &quot;Siap cetak&quot; untuk versi tanpa warna.
         </div>
       )}
 
       {(pj.surat_tugas_path || pj.laporan_path) && (
         <div className="flex flex-wrap gap-2 text-sm">
-          {pj.surat_tugas_path && <a className="btn-secondary" href={`/api/perjalanan-dinas/${id}/berkas?jenis=surat_tugas`}><FileText className="h-4 w-4" /> Surat Tugas: {pj.surat_tugas_nama}</a>}
-          {pj.laporan_path && <a className="btn-secondary" href={`/api/perjalanan-dinas/${id}/berkas?jenis=laporan`}><FileText className="h-4 w-4" /> Laporan: {pj.laporan_nama}</a>}
+          {pj.surat_tugas_path && <a className="btn-secondary" href={`/api/perjalanan-dinas/${id}/berkas?jenis=surat_tugas`}><FileText className="h-4 w-4" /> Berkas lama – Surat Tugas: {pj.surat_tugas_nama}</a>}
+          {pj.laporan_path && <a className="btn-secondary" href={`/api/perjalanan-dinas/${id}/berkas?jenis=laporan`}><FileText className="h-4 w-4" /> Berkas lama – Laporan: {pj.laporan_nama}</a>}
         </div>
       )}
 

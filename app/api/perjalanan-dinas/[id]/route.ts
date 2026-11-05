@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const res = await simpanPerjadin(supabase, {
     id, userId: auth.user.id, input: v.data, lama: v.lama_hari,
-    tahun: ada.tahun_anggaran, suratTugas: form.get("surat_tugas"), laporan: form.get("laporan"),
+    tahun: ada.tahun_anggaran
   });
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
   return NextResponse.json({ id: res.id, peringatan: res.peringatan });
