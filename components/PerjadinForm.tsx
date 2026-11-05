@@ -16,6 +16,7 @@ export type PerjadinInitial = {
   jenis_tarif: "perjalanan" | "rapat" | "diklat"; tarif_uang_harian: number;
   biaya_lain: { uraian: string; jumlah: number }[];
   dpa_id: string; tanggal_kuitansi: string; nomor_kuitansi: string;
+  dasar_penugasan: string; hasil_kegiatan: string;
   pegawai_ids: string[];
   surat_tugas_nama?: string | null; laporan_nama?: string | null;
 };
@@ -23,7 +24,7 @@ export type PerjadinInitial = {
 const KOSONG: PerjadinInitial = {
   nomor_surat_tugas: "", tanggal_surat_tugas: "", maksud: "", tujuan_kota: "", tujuan_provinsi: "",
   tanggal_berangkat: "", tanggal_kembali: "", jenis_tarif: "perjalanan", tarif_uang_harian: 0,
-  biaya_lain: [], dpa_id: "", tanggal_kuitansi: "", nomor_kuitansi: "", pegawai_ids: [],
+  biaya_lain: [], dpa_id: "", tanggal_kuitansi: "", nomor_kuitansi: "", dasar_penugasan: "", hasil_kegiatan: "", pegawai_ids: [],
 };
 
 const rp = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n || 0));
@@ -213,10 +214,10 @@ export default function PerjadinForm(props: {
   return (
     <div className="space-y-5">
       {/* 1. Berkas */}
-      <Section no={1} title="Unggah Berkas Sumber" desc="Surat Tugas dibaca otomatis untuk mengisi formulir di bawah. Hasil bacaan selalu dapat Anda koreksi.">
+      <Section no={1} title="Impor dari Berkas (opsional)" desc="Bila Surat Tugas sudah ada, unggah untuk mengisi formulir otomatis. Bila belum, lewati langkah ini dan isi formulir di bawah — Surat Tugas & Laporan dibuat oleh sistem.">
         <div className="grid sm:grid-cols-2 gap-4">
-          <FileBox label="Surat Tugas" wajib file={fileST} setFile={setFileST} tersimpan={props.initial?.surat_tugas_nama} />
-          <FileBox label="Laporan Perjalanan Dinas (opsional)" file={fileLap} setFile={setFileLap} tersimpan={props.initial?.laporan_nama} />
+          <FileBox label="Surat Tugas (berkas lama)" file={fileST} setFile={setFileST} tersimpan={props.initial?.surat_tugas_nama} />
+          <FileBox label="Laporan Perjalanan Dinas (berkas lama)" file={fileLap} setFile={setFileLap} tersimpan={props.initial?.laporan_nama} />
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" onClick={bacaOtomatis} disabled={membaca || !fileST} className="btn-primary">
@@ -267,6 +268,14 @@ export default function PerjadinForm(props: {
           <div>
             <label className="field-label">Nomor Kuitansi (opsional)</label>
             <input className="field" value={f.nomor_kuitansi} onChange={(e) => set("nomor_kuitansi", e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Dasar Penugasan (opsional) — satu baris = satu butir</label>
+            <textarea rows={3} className="field" value={f.dasar_penugasan} onChange={(e) => set("dasar_penugasan", e.target.value)} placeholder={"mis. Peraturan Wali Kota Batu Nomor … tentang …\nBila kosong, dasar otomatis: DPA sub kegiatan terkait."} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Hasil Kegiatan untuk Laporan (opsional)</label>
+            <textarea rows={4} className="field" value={f.hasil_kegiatan} onChange={(e) => set("hasil_kegiatan", e.target.value)} placeholder="Uraikan hasil/pokok bahasan kegiatan. Bila kosong, Laporan memuat kalimat umum yang dapat disunting di Word." />
           </div>
         </div>
         <p className="mt-3 text-sm text-slate-600">
@@ -400,7 +409,7 @@ export default function PerjadinForm(props: {
               <span className="text-xs text-slate-400"> (Rp {rp(totalOrang)} per orang)</span></p>
           </div>
           <button type="button" onClick={simpan} disabled={menyimpan} className="btn-primary !px-6 !py-2.5">
-            {menyimpan ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan…</> : edit ? "Simpan Perubahan" : "Simpan & Buat Kuitansi"}
+            {menyimpan ? <><Loader2 className="h-4 w-4 animate-spin" /> Menyimpan…</> : edit ? "Simpan Perubahan" : "Simpan & Buat Surat Tugas, Laporan, Kuitansi"}
           </button>
         </div>
         {error && <p role="alert" className="mt-3 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
@@ -409,6 +418,8 @@ export default function PerjadinForm(props: {
             <p className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4" /> Perubahan tersimpan.</p>
             {sukses.peringatan.map((w, i) => <p key={i} className="text-amber-700 mt-1">{w}</p>)}
             <div className="mt-2 flex flex-wrap gap-2">
+              <a className="btn-secondary !py-1.5" href={`/api/perjalanan-dinas/${sukses.id}/surat-tugas`}><Download className="h-4 w-4" /> Surat Tugas</a>
+              <a className="btn-secondary !py-1.5" href={`/api/perjalanan-dinas/${sukses.id}/laporan`}><Download className="h-4 w-4" /> Laporan</a>
               <a className="btn-secondary !py-1.5" href={`/api/perjalanan-dinas/${sukses.id}/kuitansi`}><Download className="h-4 w-4" /> Kuitansi (penanda merah)</a>
               <a className="btn-secondary !py-1.5" href={`/api/perjalanan-dinas/${sukses.id}/kuitansi?warna=hitam`}><Download className="h-4 w-4" /> Kuitansi (siap cetak)</a>
             </div>

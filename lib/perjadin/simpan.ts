@@ -15,6 +15,8 @@ export type InputPerjadin = {
   dpa_id: string | null;
   tanggal_kuitansi: string | null;
   nomor_kuitansi: string | null;
+  dasar_penugasan: string | null;
+  hasil_kegiatan: string | null;
   pegawai_ids: string[];
   hasil_ekstraksi?: unknown;
 };
@@ -66,6 +68,8 @@ export function validasiInput(raw: any): { error: string } | { data: InputPerjad
       dpa_id: isUuid(raw.dpa_id) ? raw.dpa_id : null,
       tanggal_kuitansi: tglOpt(raw.tanggal_kuitansi),
       nomor_kuitansi: teks(raw.nomor_kuitansi, 80),
+      dasar_penugasan: teks(raw.dasar_penugasan, 2000),
+      hasil_kegiatan: teks(raw.hasil_kegiatan, 6000),
       pegawai_ids: ids,
       hasil_ekstraksi: raw.hasil_ekstraksi ?? null,
     },

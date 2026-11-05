@@ -59,13 +59,27 @@ export async function simpanPerjadin(
   };
   if (input.hasil_ekstraksi) baris.hasil_ekstraksi = input.hasil_ekstraksi;
 
+  // Kolom naskah (dasar & hasil kegiatan) baru ada setelah migrasi 20260805000000.
+  // Bila migrasi belum dijalankan, simpan tanpa kedua kolom itu + beri peringatan.
+  const kolomNaskah = { dasar_penugasan: input.dasar_penugasan, hasil_kegiatan: input.hasil_kegiatan };
+  const kolomHilang = (m?: string) => !!m && /dasar_penugasan|hasil_kegiatan/.test(m);
+
   let id = a.id;
   if (id) {
-    const { error } = await supabase.from("perjadin").update(baris).eq("id", id);
+    let { error } = await supabase.from("perjadin").update({ ...baris, ...kolomNaskah }).eq("id", id);
+    if (error && kolomHilang(error.message)) {
+      peringatan.push("Dasar penugasan & hasil kegiatan belum tersimpan: jalankan migrasi 20260805000000_perjadin_naskah.sql di Supabase.");
+      ({ error } = await supabase.from("perjadin").update(baris).eq("id", id));
+    }
     if (error) return { ok: false, error: error.message };
   } else {
-    const { data, error } = await supabase
-      .from("perjadin").insert({ ...baris, dibuat_oleh: a.userId }).select("id").single();
+    const ins = (b: Record<string, unknown>) =>
+      supabase.from("perjadin").insert({ ...b, dibuat_oleh: a.userId }).select("id").single();
+    let { data, error } = await ins({ ...baris, ...kolomNaskah });
+    if (error && kolomHilang(error.message)) {
+      peringatan.push("Dasar penugasan & hasil kegiatan belum tersimpan: jalankan migrasi 20260805000000_perjadin_naskah.sql di Supabase.");
+      ({ data, error } = await ins(baris));
+    }
     if (error || !data) return { ok: false, error: error?.message || "Gagal menyimpan." };
     id = data.id as string;
   }

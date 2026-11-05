@@ -26,7 +26,7 @@ export default async function PerjalananDinasPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Administrasi Perjalanan Dinas</h1>
-          <p className="page-sub">Unggah Surat Tugas &amp; Laporan Perjalanan Dinas — Kuitansi SPPD disusun otomatis. Tahun Anggaran {tahun}.</p>
+          <p className="page-sub">Satu kali input menghasilkan Surat Tugas, Laporan Perjalanan Dinas, dan Kuitansi SPPD. Tahun Anggaran {tahun}.</p>
         </div>
         <Link href="/perjalanan-dinas/baru" className="btn-primary"><Plus className="h-4 w-4" /> Perjalanan Dinas Baru</Link>
       </div>

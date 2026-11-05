@@ -42,6 +42,8 @@ export default async function PerjadinDetailPage(props: {
     dpa_id: pj.dpa_id ?? "",
     tanggal_kuitansi: pj.tanggal_kuitansi ?? "",
     nomor_kuitansi: pj.nomor_kuitansi ?? "",
+    dasar_penugasan: pj.dasar_penugasan ?? "",
+    hasil_kegiatan: pj.hasil_kegiatan ?? "",
     pegawai_ids: [...(pj.peserta ?? [])].sort((a: any, b: any) => a.urut - b.urut).map((p: any) => p.pegawai_id).filter(Boolean),
     surat_tugas_nama: pj.surat_tugas_nama,
     laporan_nama: pj.laporan_nama,
@@ -53,10 +55,12 @@ export default async function PerjadinDetailPage(props: {
         <div>
           <Link href="/perjalanan-dinas" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Kembali</Link>
           <h1 className="page-title mt-2">{pj.nomor_surat_tugas || "Perjalanan Dinas"}</h1>
-          <p className="page-sub">Tahun Anggaran {pj.tahun_anggaran} · ubah data lalu simpan untuk memperbarui kuitansi.</p>
+          <p className="page-sub">Tahun Anggaran {pj.tahun_anggaran} · ubah data lalu simpan untuk memperbarui Surat Tugas, Laporan, dan Kuitansi.</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <a className="btn-primary" href={`/api/perjalanan-dinas/${id}/kuitansi`}><Download className="h-4 w-4" /> Kuitansi SPPD</a>
+          <a className="btn-primary" href={`/api/perjalanan-dinas/${id}/surat-tugas`}><Download className="h-4 w-4" /> Surat Tugas</a>
+          <a className="btn-primary" href={`/api/perjalanan-dinas/${id}/laporan`}><Download className="h-4 w-4" /> Laporan Perjalanan Dinas</a>
+          <a className="btn-secondary" href={`/api/perjalanan-dinas/${id}/kuitansi`}><Download className="h-4 w-4" /> Kuitansi SPPD</a>
           <a className="btn-secondary" href={`/api/perjalanan-dinas/${id}/kuitansi?warna=hitam`}><Download className="h-4 w-4" /> Siap cetak</a>
           <HapusPerjadinButton id={id} redirectTo="/perjalanan-dinas" />
         </div>
@@ -64,7 +68,7 @@ export default async function PerjadinDetailPage(props: {
 
       {sp.tersimpan && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" /> Data tersimpan. Kuitansi SPPD siap diunduh. Teks <span className="text-red-600 font-medium">merah</span> = isian otomatis sistem; gunakan &quot;Siap cetak&quot; untuk versi tanpa warna.
+          <CheckCircle2 className="h-4 w-4" /> Data tersimpan. Surat Tugas (berkop), Laporan Perjalanan Dinas (tanpa kop), dan Kuitansi SPPD siap diunduh. Teks <span className="text-red-600 font-medium">merah</span> = isian otomatis sistem; gunakan &quot;Siap cetak&quot; untuk versi tanpa warna.
         </div>
       )}
 
