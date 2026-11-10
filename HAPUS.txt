@@ -1,4 +1,0 @@
-Hapus file berikut dari repo (fitur impor-dari-berkas Surat Tugas sudah dihilangkan):
-  app/api/perjalanan-dinas/ekstrak/route.ts
-  lib/perjadin/parse.ts
-  lib/perjadin/wilayah.ts
