@@ -16,8 +16,8 @@ export default async function RekeningImportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/rekening" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Rekening &amp; Pagu</Link>
-        <h1 className="page-title mt-2">Impor / Perbarui Pagu dari Excel</h1>
+        <Link href="/rekening" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Input Anggaran</Link>
+        <h1 className="page-title mt-2">Unggah Pagu dari Excel</h1>
         <p className="page-sub">
           Tujuan: <b>{label}</b> (ganti lewat menu periode). Yang disimpan hanya kolom <code>{kolomTahapan}</code>.
           Selalu periksa pratinjau sebelum menyimpan; seluruh penyimpanan berlangsung dalam satu transaksi (gagal = tidak ada yang berubah).
@@ -25,16 +25,16 @@ export default async function RekeningImportPage() {
       </div>
 
       <div className="card p-5 text-sm text-slate-600 space-y-3">
-        <p className="font-medium text-slate-900">Satu format tetap untuk semua tahapan</p>
+        <p className="font-medium text-slate-900">Cara cepat: 3 langkah</p>
         <ol className="list-decimal pl-5 space-y-1">
-          <li>Unduh <b>format isian</b> — berisi seluruh rekening Tahun Anggaran {tahun} dengan tiga kolom pagu: <code>pagu_murni</code>, <code>pagu_pergeseran</code>, <code>pagu_perubahan</code>.</li>
-          <li>Pada tahapan {tahapanLabel(tahapan)}, ubah <b>hanya kolom <code>{kolomTahapan}</code></b> (kosong = baris dilewati). Kolom tahapan lain tidak diimpor; bila beda dari database, diberi peringatan.</li>
-          <li>Rekening baru: tambah baris, kosongkan <code>id_rekening</code>. Koreksi kode/uraian/sumber dana yang salah: ubah di barisnya, <b>jangan hapus <code>id_rekening</code></b> — tercatat sebagai koreksi (kode lama → baru).</li>
-          <li>Unggah, periksa pratinjau (galat, saran kode mirip, peringatan), centang konfirmasi bila diminta, lalu simpan.</li>
+          <li>Unduh <b>format isian</b> (sudah berisi semua belanja {tahun}).</li>
+          <li>Di Excel, ubah <b>hanya kolom <code>{kolomTahapan}</code></b> untuk {tahapanLabel(tahapan)}. Kolom lain jangan diubah. Mau tambah belanja baru? Tambah baris di bawah.</li>
+          <li>Unggah di sini → baca hasil pemeriksaan → tekan <b>Simpan</b>. Bila ada yang salah, sistem menunjukkan baris dan alasannya, dan tidak ada yang tersimpan sebelum Anda setuju.</li>
         </ol>
+        <p className="text-xs text-slate-500">Hanya ingin mengubah beberapa belanja? Lebih mudah lewat tombol <i>Ubah</i> di halaman <Link href="/rekening" className="underline">Input Anggaran</Link>.</p>
         <div className="flex flex-wrap gap-2">
-          <a className="btn-primary !py-1.5 inline-flex" href="/api/rekening/format"><Download className="h-4 w-4" /> Unduh format isian (data {tahun})</a>
-          <a className="btn-secondary !py-1.5 inline-flex" href="/api/rekening/format?kosong=1"><Download className="h-4 w-4" /> Format kosong (tahun anggaran baru)</a>
+          <a className="btn-primary !py-1.5 inline-flex" href="/api/rekening/format"><Download className="h-4 w-4" /> Unduh format isian</a>
+          <a className="btn-secondary !py-1.5 inline-flex" href="/api/rekening/format?kosong=1"><Download className="h-4 w-4" /> Format kosong (tahun baru)</a>
         </div>
       </div>
 

@@ -3,15 +3,35 @@
 import { createClient } from "@/lib/supabase/server";
 import { getPeriode } from "@/lib/periode";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { failTo, okTo } from "@/lib/flash";
 import { bersihkanKode, periksaKode, rapikanTeks, saranKodeBelanja } from "@/lib/anggaran/kode";
 
-// Pesan error tampil sebagai banner di halaman (bukan halaman error umum).
-function fail(message: unknown): never {
-  return failTo("/rekening", message);
+// Galat/sukses dilempar sebagai Pesan, lalu dibungkus jalankan() yang mengarahkan
+// pengguna KEMBALI ke halaman asalnya (daftar, form tambah, atau form ubah) sehingga
+// isian tidak hilang konteks. Hanya alamat di bawah /rekening yang diizinkan.
+class Pesan extends Error {
+  constructor(public tipe: "ok" | "gagal", public isi: unknown) { super(String((isi as any)?.message ?? isi)); }
 }
-function ok(message: string): never {
-  return okTo("/rekening", message);
+function fail(message: unknown): never { throw new Pesan("gagal", message); }
+function ok(message: string): never { throw new Pesan("ok", message); }
+
+function tujuanKembali(fd: FormData, cadangan = "/rekening"): string {
+  const k = String(fd.get("kembali") || "");
+  return /^\/rekening(\/[A-Za-z0-9-]+){0,2}$/.test(k) ? k : cadangan;
+}
+async function jalankan(fd: FormData, fn: () => Promise<void>, sukses = "/rekening"): Promise<never> {
+  const kembali = tujuanKembali(fd);
+  try {
+    await fn();
+  } catch (e) {
+    if (e instanceof Pesan) {
+      if (e.tipe === "ok") return okTo(e.tipe === "ok" ? sukses : kembali, e.message);
+      return failTo(kembali, e.isi);
+    }
+    throw e; // termasuk NEXT_REDIRECT
+  }
+  return redirect(sukses);
 }
 
 /** Angka dari <input type="number">: harus berisi angka valid (tidak diam-diam menjadi 0). */
@@ -52,6 +72,7 @@ async function pastikanDiKatalog(supabase: any, kodeBelanja: string, bolehLuar: 
 // Semua perubahan tercatat otomatis di Riwayat Pagu (trigger database).
 // ---------------------------------------------------------
 export async function addRekening(formData: FormData) {
+  return jalankan(formData, async () => {
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
 
@@ -104,6 +125,7 @@ export async function addRekening(formData: FormData) {
 
   revalidatePath("/rekening");
   ok(`Rekening ${hk.kode} ditambahkan.`);
+  });
 }
 
 // ---------------------------------------------------------
@@ -114,6 +136,7 @@ export async function addRekening(formData: FormData) {
 //  - Pagu hanya berlaku di tahapan aktif; ditolak bila sudah diubah pengguna lain.
 // ---------------------------------------------------------
 export async function updateRekening(formData: FormData) {
+  return jalankan(formData, async () => {
   const supabase = await createClient();
 
   const dpa_id = String(formData.get("dpa_id") || "");
@@ -177,6 +200,7 @@ export async function updateRekening(formData: FormData) {
   if (masterPatch.sumber_dana) info.push(`sumber dana ${lama!.sumber_dana} → ${sumber_dana}`);
   if (masterPatch.jenis_belanja) info.push("uraian diubah");
   ok(info.length ? `Tersimpan. Perubahan master (berlaku semua tahapan): ${info.join("; ")}. Tercatat di Riwayat Pagu.` : "Tersimpan.");
+  });
 }
 
 // ---------------------------------------------------------
@@ -189,6 +213,7 @@ export async function updateRekening(formData: FormData) {
 // Nilai yang dihapus tetap tersimpan di Riwayat Pagu (trigger database).
 // ---------------------------------------------------------
 export async function deleteRekening(formData: FormData) {
+  return jalankan(formData, async () => {
   const supabase = await createClient();
   const dpa_id = String(formData.get("dpa_id") || "");
   const rekening_id = String(formData.get("rekening_id") || "");
@@ -207,6 +232,7 @@ export async function deleteRekening(formData: FormData) {
 
   revalidatePath("/rekening");
   ok("Rekening dihapus dari tahapan ini. Nilai sebelumnya tersimpan di Riwayat Pagu.");
+  });
 }
 
 // ---------------------------------------------------------
@@ -215,6 +241,7 @@ export async function deleteRekening(formData: FormData) {
 // bisa tertimpa tanpa jejak). Kode sub kegiatan wajib berawalan kode kegiatan.
 // ---------------------------------------------------------
 export async function addKegiatan(formData: FormData) {
+  return jalankan(formData, async () => {
   const { tahun } = await getPeriode();
   const supabase = await createClient();
 
@@ -235,9 +262,11 @@ export async function addKegiatan(formData: FormData) {
 
   revalidatePath("/rekening");
   ok(`Kegiatan ${kode_kegiatan} ditambahkan.`);
+  });
 }
 
 export async function addSubKegiatan(formData: FormData) {
+  return jalankan(formData, async () => {
   const { tahun } = await getPeriode();
   const supabase = await createClient();
 
@@ -258,6 +287,7 @@ export async function addSubKegiatan(formData: FormData) {
 
   revalidatePath("/rekening");
   ok(`Sub kegiatan ${kode_sub_kegiatan} ditambahkan.`);
+  });
 }
 
 // ---------------------------------------------------------
@@ -267,6 +297,7 @@ export async function addSubKegiatan(formData: FormData) {
 // Satu transaksi (fungsi SQL salin_pagu_tahapan) dan tercatat di riwayat.
 // ---------------------------------------------------------
 export async function salinDariTahapan(formData: FormData) {
+  return jalankan(formData, async () => {
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
   const dariTahapan = String(formData.get("dari_tahapan") || "");
@@ -282,4 +313,5 @@ export async function salinDariTahapan(formData: FormData) {
 
   revalidatePath("/rekening");
   ok(`${Number(data) || 0} rekening disalin dari ${dariTahapan}. Yang sudah punya pagu di tahapan ini tidak ditimpa.`);
+  });
 }

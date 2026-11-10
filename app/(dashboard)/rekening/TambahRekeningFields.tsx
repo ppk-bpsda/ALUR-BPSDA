@@ -8,7 +8,7 @@ type Belanja = { kode_belanja: string; nama_belanja: string };
 const labelBelanja = (b: Belanja) => `${b.kode_belanja} — ${b.nama_belanja}`;
 
 /**
- * Empat isian pertama form "Tambah Rekening & Pagu Baru" (Sub Kegiatan,
+ * Empat isian pertama form "Tambah Input Anggaran Baru" (Sub Kegiatan,
  * Kode Rekening lengkap, Uraian Belanja, Jenis Rek.) + kotak pencarian
  * Katalog Kode Rekening Belanja (opsional).
  *

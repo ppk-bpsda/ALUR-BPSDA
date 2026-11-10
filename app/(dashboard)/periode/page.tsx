@@ -31,7 +31,7 @@ export default async function PeriodePage(props: {
       <div>
         <h1 className="font-serif text-xl text-slate-900">Ganti Periode</h1>
         <p className="text-sm text-slate-500">
-          Periode aktif ini dipakai sebagai filter di menu Rekening &amp; Pagu (DPA),
+          Periode aktif ini dipakai sebagai filter di menu Input Anggaran (DPA),
           Pengajuan Belanja, dan Rekap Realisasi.
         </p>
       </div>

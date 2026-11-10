@@ -104,7 +104,7 @@ export default async function AnggaranKasPage(props: { searchParams: Promise<{ o
             <span className="ml-3 text-xs text-slate-500">Menyimpan seluruh baris di halaman ini.</span></div>
         )}
       </form>
-      <p className="text-xs text-slate-500">Pagu bersumber dari <Link className="underline" href="/rekening">Rekening &amp; Pagu</Link>. Kolom Selisih = total TW − pagu; bila pagu diubah setelah kas diisi, selisih akan muncul di sini.</p>
+      <p className="text-xs text-slate-500">Pagu bersumber dari <Link className="underline" href="/rekening">Input Anggaran</Link>. Kolom Selisih = total TW − pagu; bila pagu diubah setelah kas diisi, selisih akan muncul di sini.</p>
     </div>
   );
 }

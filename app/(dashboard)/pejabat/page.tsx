@@ -33,7 +33,7 @@ export default async function PejabatPage() {
           Data pejabat untuk Tahun Anggaran {tahun} -- dipakai otomatis mengisi Nota Dinas, SPP/SPTJB,
           dan Kwitansi GU. Menu ini bisa diubah sewaktu-waktu kalau ada promosi/mutasi jabatan.
           Khusus <span className="font-medium">nama PPTK</span>: sudah otomatis tersinkron (dicocokkan
-          berdasarkan nama) dengan data PPTK di menu <span className="font-medium">Rekening &amp; Pagu
+          berdasarkan nama) dengan data PPTK di menu <span className="font-medium">Input Anggaran
           (DPA)</span> yang diimpor dari file lampiran Anda -- lengkapi NIP dan Pangkat/Gol di bawah untuk
           nama-nama yang sudah muncul.
         </p>
@@ -43,7 +43,7 @@ export default async function PejabatPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-2.5 text-sm text-amber-800">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <p>
-            {pptkBelumLengkap.length} PPTK dari hasil impor Rekening &amp; Pagu belum ada NIP-nya --{" "}
+            {pptkBelumLengkap.length} PPTK dari hasil impor Input Anggaran belum ada NIP-nya --{" "}
             {pptkBelumLengkap.map((p) => p.nama).join(", ")}. Lengkapi lewat form edit di bawah.
           </p>
         </div>

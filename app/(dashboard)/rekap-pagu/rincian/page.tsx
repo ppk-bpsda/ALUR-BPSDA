@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPeriode, tahapanLabel } from "@/lib/periode";
 import { formatRupiah } from "@/lib/terbilang";
 import { TAHAPAN_KUNCI } from "@/lib/anggaran/pagu";
-import { muatRincian, muatAsalPagu, statusAntarTahapan, periksaData } from "@/lib/anggaran/periksa";
+import { tautanUbah, muatRincian, muatAsalPagu, statusAntarTahapan, periksaData } from "@/lib/anggaran/periksa";
 import { ambilSemua } from "@/lib/anggaran/muat";
 
 type Filter = "baru" | "hilang" | "semua";
@@ -58,7 +58,7 @@ export default async function RincianPaguPage(props: { searchParams: Promise<{ s
         <p className="page-sub">
           Tahun Anggaran {tahun}{subNama ? <> · Sub kegiatan <b>{subNama.kode}</b> {subNama.nama}</> : " · semua sub kegiatan"}.
           <b> Baru</b> = rekening muncul di suatu tahapan padahal tidak ada di tahapan sebelumnya. <b>Tidak dibawa</b> = ada di tahapan sebelumnya tetapi tidak ada di tahapan berikutnya.
-          Bila yang baru sebenarnya salah kode dari belanja lama, perbaiki kodenya lewat <b>Rekening &amp; Pagu</b> (Ubah kode) agar tidak terbaca sebagai belanja baru.
+          Bila yang baru sebenarnya salah kode dari belanja lama, perbaiki kodenya lewat <b>Input Anggaran</b> (Ubah kode) agar tidak terbaca sebagai belanja baru.
         </p>
       </div>
 
@@ -105,7 +105,7 @@ export default async function RincianPaguPage(props: { searchParams: Promise<{ s
                     </>) : st.baruDi ? <span className="text-slate-400">Tidak tercatat (dibuat sebelum riwayat aktif)</span> : "—"}
                   </td>
                   <td className="px-3 py-2 space-y-1">
-                    <Link href={`/rekening?q=${encodeURIComponent(r.kode_belanja)}&sub=${r.sub.id}`} className="inline-flex items-center gap-1 text-brand-700 hover:underline"><Pencil className="h-3 w-3" /> Perbaiki</Link>
+                    {tautanUbah(r) && <Link href={tautanUbah(r)!} className="inline-flex items-center gap-1 text-brand-700 hover:underline"><Pencil className="h-3 w-3" /> Perbaiki</Link>}
                     <Link href={`/rekening/riwayat?q=${encodeURIComponent(r.kode_belanja)}`} className="flex items-center gap-1 text-brand-700 hover:underline"><History className="h-3 w-3" /> Riwayat</Link>
                   </td>
                 </tr>
@@ -114,10 +114,7 @@ export default async function RincianPaguPage(props: { searchParams: Promise<{ s
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-slate-500">
-        Untuk memperbaiki: buka periode tahapan tempat rekening itu berada (menu periode), lalu ubah di <b>Rekening &amp; Pagu</b>. Perubahan kode/uraian berlaku untuk semua tahapan dan tercatat di Riwayat.
-        Pemeriksaan otomatis lain ada di <Link href="/rekening/pemeriksaan" className="underline">Pemeriksaan Data Pagu</Link>.
-      </p>
+      <p className="text-xs text-slate-500">Tombol <b>Perbaiki</b> membuka halaman Ubah. Pemeriksaan otomatis lain: <Link href="/rekening/pemeriksaan" className="underline">Pemeriksaan Data Pagu</Link>.</p>
     </div>
   );
 }

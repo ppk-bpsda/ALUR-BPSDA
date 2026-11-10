@@ -15,7 +15,7 @@ export async function GET() {
     [""],
     ["1. Sheet 'Pengajuan' -- satu baris = satu Nota Dinas/pengajuan."],
     ["   - id_sementara: kode bebas Anda buat sendiri untuk menghubungkan baris ini ke sheet Rincian & Potongan (mis. PJK-001). Harus UNIK per pengajuan."],
-    ["   - kode_rekening: HARUS SAMA PERSIS dengan kode rekening di menu Rekening & Pagu (mis. 5.1.02.02.001.00030)."],
+    ["   - kode_rekening: HARUS SAMA PERSIS dengan kode rekening di menu Input Anggaran (mis. 5.1.02.02.001.00030)."],
     ["   - sumber_dana: isi kalau kode rekening yang sama punya lebih dari satu sumber dana (PAD/DBH CHT/dll). Boleh dikosongkan kalau cuma satu."],
     ["   - tahun_anggaran & tahapan: harus cocok dengan DPA yang sudah ada di aplikasi (tahapan: murni/pergeseran/perubahan)."],
     ["   - metode_pembayaran: isi LS atau GU."],

@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 // lama yang kelompok_belanja-nya belum sesuai 2 pilihan baku ("Belanja
 // Barang/Jasa" / "Belanja Modal") -- lihat catatan pegawai: banyak baris
 // rekening lama masih berisi "Belanja Operasi" dari sebelum aturan ini
-// dibuat, dan menyuruh pegawai balik ke halaman admin Rekening & Pagu
+// dibuat, dan menyuruh pegawai balik ke halaman admin Input Anggaran
 // satu-satu terlalu merepotkan.
 const PILIHAN_VALID = ["Belanja Barang/Jasa", "Belanja Modal"];
 

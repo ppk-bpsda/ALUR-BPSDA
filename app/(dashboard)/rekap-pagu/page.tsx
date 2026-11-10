@@ -85,7 +85,7 @@ export default async function RekapPaguPage() {
         <h1 className="page-title">Perbandingan Pagu Antartahapan</h1>
         <p className="page-sub">
           Tahun Anggaran {tahun}: pagu per Program, Kegiatan, dan Sub Kegiatan pada Murni, Pergeseran, dan Perubahan. Selisih = Perubahan − Pergeseran.
-          Periode aktif: <b>{tahapan}</b>. Ubah data lewat <Link className="underline" href="/rekening">Rekening &amp; Pagu</Link> atau{" "}
+          Periode aktif: <b>{tahapan}</b>. Ubah data lewat <Link className="underline" href="/rekening">Input Anggaran</Link> atau{" "}
           <Link className="underline" href="/rekening/import">impor Excel</Link>.
           Klik label hijau <b>&quot;belanja baru&quot;</b> / merah <b>&quot;tidak dibawa&quot;</b> untuk melihat rekening mana yang dimaksud, atau buka{" "}
           <Link className="underline" href="/rekap-pagu/rincian?status=baru">semua belanja baru</Link> dan{" "}
@@ -120,7 +120,7 @@ export default async function RekapPaguPage() {
           </tr></tfoot>
         </table>
       </div>
-      <p className="text-xs text-slate-500">Belum ada pagu Perubahan? Di menu Rekening &amp; Pagu pilih periode Perubahan lalu gunakan &quot;Salin dari tahapan lain&quot; (Pergeseran), kemudian sesuaikan atau impor Excel.</p>
+      <p className="text-xs text-slate-500">Belum ada pagu Perubahan? Di menu Input Anggaran pilih periode Perubahan lalu gunakan &quot;Salin dari tahapan lain&quot; (Pergeseran), kemudian sesuaikan atau impor Excel.</p>
     </div>
   );
 }

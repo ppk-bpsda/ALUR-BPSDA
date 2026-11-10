@@ -3,7 +3,7 @@ import { ArrowLeft, History, Pencil, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPeriode, tahapanLabel } from "@/lib/periode";
 import { ambilSemua } from "@/lib/anggaran/muat";
-import { muatRincian, periksaData, type Masalah } from "@/lib/anggaran/periksa";
+import { tautanUbah, muatRincian, periksaData, type Masalah } from "@/lib/anggaran/periksa";
 
 const WARNA = { galat: "bg-rose-50 text-rose-700", periksa: "bg-amber-50 text-amber-700", info: "bg-sky-50 text-sky-700" } as const;
 const LABEL = { galat: "Pasti salah", periksa: "Perlu diperiksa", info: "Informasi" } as const;
@@ -36,7 +36,7 @@ export default async function PemeriksaanPage(props: { searchParams: Promise<{ t
   return (
     <div className="space-y-5">
       <div>
-        <Link href="/rekening" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Rekening &amp; Pagu</Link>
+        <Link href="/rekening" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Input Anggaran</Link>
         <h1 className="page-title mt-2 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-brand-700" /> Pemeriksaan Data Pagu</h1>
         <p className="page-sub">
           Tahun Anggaran {tahun}: {rincian.length} rekening diperiksa terhadap katalog resmi ({katalog.size || "katalog belum tersedia"}), struktur kode, penulisan sumber dana, dan perpindahan antartahapan.
@@ -73,7 +73,7 @@ export default async function PemeriksaanPage(props: { searchParams: Promise<{ t
                 </td>
                 <td className="px-3 py-2"><p className="font-medium text-slate-800">{m.jenis}{m.tahapan ? ` (${tahapanLabel(m.tahapan)})` : ""}</p><p className="text-slate-600">{m.pesan}</p></td>
                 <td className="px-3 py-2 space-y-1">
-                  <Link href={`/rekening?q=${encodeURIComponent(m.rekening.kode_belanja)}&sub=${m.rekening.sub.id}`} className="inline-flex items-center gap-1 text-brand-700 hover:underline"><Pencil className="h-3 w-3" /> Perbaiki</Link>
+                  {tautanUbah(m.rekening) && <Link href={tautanUbah(m.rekening)!} className="inline-flex items-center gap-1 text-brand-700 hover:underline"><Pencil className="h-3 w-3" /> Perbaiki</Link>}
                   <Link href={`/rekening/riwayat?q=${encodeURIComponent(m.rekening.kode_belanja)}`} className="flex items-center gap-1 text-brand-700 hover:underline"><History className="h-3 w-3" /> Riwayat</Link>
                 </td>
               </tr>
@@ -82,7 +82,7 @@ export default async function PemeriksaanPage(props: { searchParams: Promise<{ t
         </table>
       </div>
       {ditampilkan.length > 400 && <p className="text-xs text-slate-500">Menampilkan 400 dari {ditampilkan.length} temuan; persempit dengan filter di atas.</p>}
-      <p className="text-xs text-slate-500">Tautan &quot;Perbaiki&quot; membuka daftar rekening di <i>periode aktif</i> ({tahapanLabel((await getPeriode()).tahapan)}). Bila rekening tidak muncul, ganti periode ke tahapan yang tercantum pada kolom Rekening.</p>
+      <p className="text-xs text-slate-500">Tombol <b>Perbaiki</b> membuka halaman Ubah pada belanja yang bersangkutan.</p>
     </div>
   );
 }

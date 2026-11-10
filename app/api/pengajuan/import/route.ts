@@ -211,7 +211,7 @@ export async function POST(req: Request) {
     }
     let rekening: any = null;
     if (rekeningMatches.length === 0) {
-      errors.push(`kode_rekening '${kodeRekTrim}' tidak ditemukan di master Rekening & Pagu`);
+      errors.push(`kode_rekening '${kodeRekTrim}' tidak ditemukan di master Input Anggaran`);
     } else if (rekeningMatches.length > 1) {
       errors.push(`kode_rekening '${kodeRekTrim}' cocok dengan >1 baris (ada beberapa sumber dana) -- isi kolom sumber_dana untuk memilih salah satu`);
     } else {
@@ -224,7 +224,7 @@ export async function POST(req: Request) {
         (d: any) => d.rekening_id === rekening.id && d.tahun_anggaran === Number(row.tahun_anggaran) && d.tahapan === tahapan
       );
       if (!dpa) {
-        errors.push(`DPA untuk rekening ini di TA ${row.tahun_anggaran} tahapan ${tahapan} belum ada -- buat dulu di menu Rekening & Pagu`);
+        errors.push(`DPA untuk rekening ini di TA ${row.tahun_anggaran} tahapan ${tahapan} belum ada -- buat dulu di menu Input Anggaran`);
       }
     }
 

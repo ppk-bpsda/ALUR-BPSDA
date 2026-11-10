@@ -78,7 +78,7 @@ export default async function RiwayatPage(props: {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/rekening" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Rekening &amp; Pagu</Link>
+        <Link href="/rekening" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Input Anggaran</Link>
         <h1 className="page-title mt-2">Riwayat Perubahan Pagu &amp; Rekening</h1>
         <p className="page-sub">
           Tahun Anggaran {tahun}. Setiap perubahan pagu, kode rekening, uraian, sumber dana, penghapusan, dan penyalinan tercatat otomatis
