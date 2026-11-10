@@ -314,7 +314,7 @@ export function susunRencana(baris: BarisFile[], ref: DataAcuan, tahapan: string
         perluKonfirmasi = true;
         if (sub) {
           const tabrak = rekByKunci.get(`${sub.id}|${kodeRek}|${lc(sumber)}`);
-          if (tabrak && tabrak.id !== rek.id) galat.push(`Koreksi ditolak: kode ${kodeRek} + sumber dana ${sumber} sudah dipakai rekening lain. Hapus/gabungkan lewat menu Rekening & Pagu.`);
+          if (tabrak && tabrak.id !== rek.id) galat.push(`Koreksi ditolak: kode ${kodeRek} + sumber dana ${sumber} sudah dipakai rekening lain. Hapus/gabungkan lewat menu Input Anggaran.`);
         }
         peringatan.push("KOREKSI MASTER REKENING -- berlaku untuk semua tahapan dan tercatat di riwayat.");
         if (kodeBelanja && rek.kode_rekening.slice(-19) !== kodeBelanja && ref.katalogBelanja.size > 0 && !ref.katalogBelanja.has(kodeBelanja)) {

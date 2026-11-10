@@ -15,6 +15,8 @@ export type RincianRekening = {
   kegiatan: { kode: string; nama: string };
   program: { kode: string; nama: string };
   pagu: Partial<Record<TahapanKey, number>>;
+  /** id baris DPA per tahapan -- untuk tautan langsung ke halaman Ubah */
+  dpa: Partial<Record<TahapanKey, string>>;
 };
 
 /** Siapa/kapan/dari mana pagu suatu tahapan pertama kali dibuat (dari riwayat otomatis). */
@@ -34,13 +36,17 @@ export async function muatRincian(supabase: SupabaseClient, tahun: number): Prom
       supabase.from("rekening_belanja")
         .select("id, kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan!inner(id, kode_sub_kegiatan, nama_sub_kegiatan, tahun_anggaran, kegiatan!inner(kode_kegiatan, nama_kegiatan, program!inner(kode_program, nama_program)))")
         .eq("sub_kegiatan.tahun_anggaran", tahun).order("id").range(a, b)),
-    ambilSemua<any>((a, b) => supabase.from("dpa").select("rekening_id, tahapan, pagu_anggaran").eq("tahun_anggaran", tahun).order("id").range(a, b)),
+    ambilSemua<any>((a, b) => supabase.from("dpa").select("id, rekening_id, tahapan, pagu_anggaran").eq("tahun_anggaran", tahun).order("id").range(a, b)),
   ]);
   const pagu = new Map<string, Partial<Record<TahapanKey, number>>>();
+  const dpaId = new Map<string, Partial<Record<TahapanKey, string>>>();
   for (const d of dpa) {
     const m = pagu.get(d.rekening_id) ?? {};
     m[d.tahapan as TahapanKey] = Number(d.pagu_anggaran);
     pagu.set(d.rekening_id, m);
+    const n = dpaId.get(d.rekening_id) ?? {};
+    n[d.tahapan as TahapanKey] = d.id;
+    dpaId.set(d.rekening_id, n);
   }
   return rek
     .map((r: any): RincianRekening => {
@@ -56,6 +62,7 @@ export async function muatRincian(supabase: SupabaseClient, tahun: number): Prom
         kegiatan: { kode: kg?.kode_kegiatan ?? "", nama: kg?.nama_kegiatan ?? "" },
         program: { kode: pg?.kode_program ?? "", nama: pg?.nama_program ?? "" },
         pagu: pagu.get(r.id) ?? {},
+        dpa: dpaId.get(r.id) ?? {},
       };
     })
     .sort((a, b) => a.sub.kode.localeCompare(b.sub.kode) || a.kode_rekening.localeCompare(b.kode_rekening) || a.sumber_dana.localeCompare(b.sumber_dana));
@@ -173,4 +180,10 @@ export function periksaData(
     }
   }
   return m;
+}
+
+/** Tautan perbaikan: halaman Ubah pada tahapan terbaru yang punya pagu untuk rekening ini. */
+export function tautanUbah(r: RincianRekening): string | null {
+  const id = r.dpa.perubahan ?? r.dpa.pergeseran ?? r.dpa.murni;
+  return id ? `/rekening/${id}/ubah` : null;
 }

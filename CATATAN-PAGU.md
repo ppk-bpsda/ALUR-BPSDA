@@ -62,3 +62,20 @@ Ringkasan · **Penganggaran** (Rekening & Pagu, Perbandingan, Pemeriksaan, Riway
 2. Simpan pengajuan (header+rincian+potongan) masih 3 langkah dengan rollback manual; idealnya satu fungsi SQL atomik seperti `terapkan_pagu`.
 3. Beberapa pemformat rupiah lokal (`rp`) masih berbeda-beda (ada yang menampilkan desimal / "—") - sengaja tidak diseragamkan.
 4. Belum diuji pada Supabase sungguhan; hanya typecheck, `next build`, uji SQL di PostgreSQL 16 tiruan, dan uji logika dengan data tiruan.
+
+---
+# Tahap 3: Penyederhanaan menu Penganggaran
+
+Menu samping Penganggaran kini hanya 3: **Input Anggaran (DPA)** · **Bandingkan Antartahapan** · **Anggaran Kas**.
+(Pemeriksaan & Riwayat tetap ada, dibuka dari halaman Input Anggaran atau pencarian cepat Ctrl/Cmd+K.)
+
+| Ingin | Lakukan |
+|---|---|
+| **Tambah** belanja | Input Anggaran > **+ Tambah Belanja** (form 2 langkah; kode dicek ke katalog) |
+| **Ubah** pagu | Tombol **Ubah** di baris > ubah angka pagu > Simpan |
+| **Koreksi** kode / uraian / sumber dana | Tombol **Ubah** > buka "Koreksi kode, uraian, atau sumber dana" (berlaku semua tahapan, tercatat) |
+| **Hapus** | Tombol **Hapus** di baris (ada konfirmasi; nilai lama tetap di Riwayat) |
+| Banyak sekaligus | **Unggah dari Excel** (3 langkah) |
+| Mulai tahapan baru | **Salin dari tahapan lain** |
+
+Baris yang kemungkinan salah ditandai ⚠ langsung di daftar (dengan alasan), plus chip "Belanja baru". Setelah simpan/galat, pengguna kembali ke halaman asalnya.
