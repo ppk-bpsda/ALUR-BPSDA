@@ -235,3 +235,6 @@ Di atas "PEJABAT PELAKSANA TEKNIS KEGIATAN" kini tercetak `Batu, <tanggal Nota D
 3. **Unggah Excel** (`/rekening/import`): pilih tahun + tahapan tujuan, unduh data tahapan sebelumnya, ubah pagu/tambah baris,
    unggah, lihat pratinjau, lalu simpan. Rekening/sub kegiatan baru dibuat otomatis. Setiap perubahan tercatat di "Riwayat perubahan pagu".
 4. Isi *Tanggal penetapan* agar transaksi bertanggal setelahnya otomatis memakai pagu tahapan baru.
+
+## 13. Pembaruan: Pagu Format Tetap & Riwayat Rinci
+Lihat `CATATAN-PAGU.md` (langkah pasang, migrasi `20260810000000_audit_pagu_dan_simpan_atomik.sql`, cara kerja per tahapan).

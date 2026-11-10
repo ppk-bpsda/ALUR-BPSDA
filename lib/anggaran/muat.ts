@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { TAHAPAN_URUT, type DataAcuan } from "./pagu";
+import { TAHAPAN_URUT, type DataAcuan, type TahapanKey } from "./pagu";
 
 // PostgREST membatasi respons 1000 baris per request -- ambil semua halaman.
 export async function ambilSemua<T>(
@@ -16,14 +16,20 @@ export async function ambilSemua<T>(
   return out;
 }
 
+/** Katalog bersifat opsional: bila tabelnya belum ada (migrasi belum dijalankan) hasilnya kosong, bukan error. */
+async function ambilOpsional<T>(fn: () => Promise<T[]>): Promise<T[]> {
+  try { return await fn(); } catch { return []; }
+}
+
 /** Data acuan yang dibutuhkan susunRencana() untuk satu Tahun Anggaran + tahapan tujuan. */
 export async function muatDataAcuan(supabase: SupabaseClient, tahun: number, tahapan: string): Promise<DataAcuan> {
-  const [programs, kegiatan, subs, rekening, dpaSemua, pptk, pengajuan] = await Promise.all([
+  const [programs, kegiatan, subs, rekening, dpaSemua, pptk, pengajuan, katalog, sumberRef] = await Promise.all([
     ambilSemua<any>((a, b) => supabase.from("program").select("id, kode_program").eq("tahun_anggaran", tahun).order("id").range(a, b)),
     ambilSemua<any>((a, b) => supabase.from("kegiatan").select("id, kode_kegiatan, program_id").eq("tahun_anggaran", tahun).order("id").range(a, b)),
     ambilSemua<any>((a, b) => supabase.from("sub_kegiatan").select("id, kode_sub_kegiatan, kegiatan_id").eq("tahun_anggaran", tahun).order("id").range(a, b)),
     ambilSemua<any>((a, b) =>
-      supabase.from("rekening_belanja").select("id, sub_kegiatan_id, kode_rekening, sumber_dana, sub_kegiatan!inner(tahun_anggaran)")
+      supabase.from("rekening_belanja")
+        .select("id, sub_kegiatan_id, kode_rekening, sumber_dana, jenis_belanja, kelompok_belanja, sub_kegiatan!inner(tahun_anggaran)")
         .eq("sub_kegiatan.tahun_anggaran", tahun).order("id").range(a, b)
     ),
     ambilSemua<any>((a, b) => supabase.from("dpa").select("id, rekening_id, tahapan, pagu_anggaran, pptk_id").eq("tahun_anggaran", tahun).order("id").range(a, b)),
@@ -34,12 +40,18 @@ export async function muatDataAcuan(supabase: SupabaseClient, tahun: number, tah
       supabase.from("pengajuan_belanja").select("jumlah_pengajuan, dpa!inner(rekening_id, tahun_anggaran, tahapan)")
         .eq("dpa.tahun_anggaran", tahun).eq("status", "dicairkan").order("id").range(a, b)
     ),
+    ambilOpsional(() => ambilSemua<any>((a, b) => supabase.from("ref_belanja").select("kode_belanja, nama_belanja").order("kode_belanja").range(a, b))),
+    ambilOpsional(() => ambilSemua<any>((a, b) => supabase.from("ref_sumber_dana").select("nama").order("id").range(a, b))),
   ]);
 
   const urutTujuan = TAHAPAN_URUT[tahapan] ?? 1;
   const dpaTujuan = new Map<string, { id: string; pagu_anggaran: number; pptk_id: string | null }>();
+  const dpaPerTahapan = new Map<string, Partial<Record<TahapanKey, number>>>();
   const pptkWarisan = new Map<string, { urut: number; id: string }>();
   for (const d of dpaSemua) {
+    const per = dpaPerTahapan.get(d.rekening_id) ?? {};
+    per[d.tahapan as TahapanKey] = Number(d.pagu_anggaran);
+    dpaPerTahapan.set(d.rekening_id, per);
     if (d.tahapan === tahapan) dpaTujuan.set(d.rekening_id, { id: d.id, pagu_anggaran: Number(d.pagu_anggaran), pptk_id: d.pptk_id });
     else if (d.pptk_id) {
       const u = TAHAPAN_URUT[d.tahapan] ?? 0;
@@ -59,9 +71,15 @@ export async function muatDataAcuan(supabase: SupabaseClient, tahun: number, tah
 
   return {
     programs, kegiatan, subs,
-    rekening: rekening.map((r: any) => ({ id: r.id, sub_kegiatan_id: r.sub_kegiatan_id, kode_rekening: r.kode_rekening, sumber_dana: r.sumber_dana })),
+    rekening: rekening.map((r: any) => ({
+      id: r.id, sub_kegiatan_id: r.sub_kegiatan_id, kode_rekening: r.kode_rekening, sumber_dana: r.sumber_dana,
+      jenis_belanja: r.jenis_belanja, kelompok_belanja: r.kelompok_belanja ?? null,
+    })),
     dpaTujuan,
+    dpaSemua: dpaPerTahapan,
     pptkWarisan: new Map(Array.from(pptkWarisan, ([k, v]) => [k, v.id])),
     pptk, realisasi,
+    katalogBelanja: new Map(katalog.map((k: any) => [String(k.kode_belanja), String(k.nama_belanja)] as const)),
+    sumberDana: sumberRef.map((s: any) => String(s.nama)),
   };
 }
