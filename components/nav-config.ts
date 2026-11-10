@@ -23,10 +23,8 @@ export const navGroups: NavGroup[] = [
   {
     label: "Penganggaran",
     items: [
-      { icon: Wallet, name: "Rekening & Pagu (DPA)", href: "/rekening", keywords: "dpa anggaran kode rekening belanja pagu input" },
-      { icon: GitCompare, name: "Perbandingan Pagu Tahapan", href: "/rekap-pagu", keywords: "pagu murni pergeseran perubahan selisih belanja baru" },
-      { icon: ShieldCheck, name: "Pemeriksaan Data Pagu", href: "/rekening/pemeriksaan", keywords: "periksa salah kode rekening kesalahan input koreksi validasi" },
-      { icon: History, name: "Riwayat Perubahan Pagu", href: "/rekening/riwayat", keywords: "riwayat audit log lacak perubahan siapa kapan" },
+      { icon: Wallet, name: "Input Anggaran (DPA)", href: "/rekening", keywords: "dpa anggaran kode rekening belanja pagu input tambah ubah hapus" },
+      { icon: GitCompare, name: "Bandingkan Antartahapan", href: "/rekap-pagu", keywords: "pagu murni pergeseran perubahan selisih belanja baru" },
       { icon: CalendarClock, name: "Anggaran Kas (Triwulan)", href: "/anggaran-kas", keywords: "kas triwulan tw anggaran kas" },
     ],
   },
@@ -67,7 +65,10 @@ export const navGroups: NavGroup[] = [
 export const extraCommands: Array<{ name: string; href: string; hint: string; icon: LucideIcon; keywords: string }> = [
   { name: "Buat pengajuan belanja baru", href: "/pengajuan/baru", hint: "Tindakan", icon: Plus, keywords: "tambah baru spj" },
   { name: "Impor pengajuan dari Excel", href: "/pengajuan/import", hint: "Tindakan", icon: Upload, keywords: "import unggah excel xlsx" },
-  { name: "Impor / perbarui pagu dari Excel", href: "/rekening/import", hint: "Tindakan", icon: Upload, keywords: "pagu perubahan pergeseran excel sub kegiatan belanja baru" },
+  { name: "Tambah belanja / pagu baru", href: "/rekening/tambah", hint: "Tindakan", icon: Plus, keywords: "tambah belanja rekening pagu dpa baru" },
+  { name: "Unggah pagu dari Excel", href: "/rekening/import", hint: "Tindakan", icon: Upload, keywords: "pagu perubahan pergeseran excel sub kegiatan belanja baru" },
+  { name: "Periksa kesalahan input pagu", href: "/rekening/pemeriksaan", hint: "Alat bantu", icon: ShieldCheck, keywords: "periksa salah kode rekening kesalahan koreksi validasi" },
+  { name: "Riwayat perubahan pagu (siapa & kapan)", href: "/rekening/riwayat", hint: "Alat bantu", icon: History, keywords: "riwayat audit log lacak perubahan" },
   { name: "Buat kuitansi SPPD baru", href: "/perjalanan-dinas/baru", hint: "Tindakan", icon: Plane, keywords: "tambah perjadin sppd" },
 ];
 
@@ -89,11 +90,13 @@ export const ROUTE_LABELS: Record<string, string> = {
   import: "Impor",
   riwayat: "Riwayat Pagu",
   pemeriksaan: "Pemeriksaan Data",
+  tambah: "Tambah Belanja",
+  ubah: "Ubah",
   rincian: "Rincian",
   "perjalanan-dinas": "Kuitansi SPPD",
   pegawai: "Data Pegawai",
   sbu: "SBU Uang Harian",
-  rekening: "Rekening & Pagu",
+  rekening: "Input Anggaran",
   pejabat: "Manajemen Akun",
   penyedia: "Penyedia Barang/Jasa",
   rekap: "Rekap Realisasi",

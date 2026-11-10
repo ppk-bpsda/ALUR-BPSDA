@@ -724,7 +724,7 @@ export default function PengajuanForm({
 
   // Data rekening lama (dibuat sebelum aturan "Jenis Rek. cuma 2 pilihan")
   // masih bisa berisi nilai lain seperti "Belanja Operasi" -- daripada
-  // menyuruh pegawai balik ke halaman admin Rekening & Pagu satu-satu,
+  // menyuruh pegawai balik ke halaman admin Input Anggaran satu-satu,
   // tampilkan koreksi cepat langsung di sini (lihat app/api/rekening/[id]/
   // kelompok-belanja/route.ts).
   async function handleFixKelompokBelanja(value: string) {
@@ -1037,7 +1037,7 @@ export default function PengajuanForm({
 
         {dpaTerpilih && (
           <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-600 space-y-1.5">
-            <p className="text-[11px] text-slate-400 uppercase tracking-wide">Data berikut otomatis dari Rekening &amp; Pagu (database) -- bukan isian manual</p>
+            <p className="text-[11px] text-slate-400 uppercase tracking-wide">Data berikut otomatis dari Input Anggaran (database) -- bukan isian manual</p>
             <p>
               <span className="text-slate-400">Program:</span>{" "}
               {dpaTerpilih.rekening?.sub_kegiatan?.kegiatan?.program?.nama_program || "-"}
@@ -1080,7 +1080,7 @@ export default function PengajuanForm({
                 )}
               </div>
               <p><span className="text-slate-400">Sumber Dana:</span> {dpaTerpilih.rekening?.sumber_dana || "-"}</p>
-              <p><span className="text-slate-400">PPTK:</span> {dpaTerpilih.pptk?.nama || "-- belum ditentukan di Rekening & Pagu --"}</p>
+              <p><span className="text-slate-400">PPTK:</span> {dpaTerpilih.pptk?.nama || "-- belum ditentukan di Input Anggaran --"}</p>
               <p><span className="text-slate-400">Pagu:</span> Rp {Number(dpaTerpilih.pagu_anggaran || 0).toLocaleString("id-ID")}</p>
             </div>
             {sisaAnggaran !== null && (
