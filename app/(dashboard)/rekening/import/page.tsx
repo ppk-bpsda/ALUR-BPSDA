@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, History } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPeriode, tahapanLabel } from "@/lib/periode";
 import RekeningImport from "@/components/RekeningImport";
@@ -7,11 +7,11 @@ import RekeningImport from "@/components/RekeningImport";
 export default async function RekeningImportPage() {
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
-  const { data: log } = await supabase
-    .from("anggaran_log").select("created_at, username, tahapan, sumber, aksi, kode_rekening, sumber_dana, pagu_lama, pagu_baru")
-    .eq("tahun_anggaran", tahun).order("created_at", { ascending: false }).limit(20);
-  const rp = (n: any) => (n === null || n === undefined ? "—" : new Intl.NumberFormat("id-ID").format(Math.round(Number(n))));
+  const { data: batch } = await supabase
+    .from("anggaran_batch").select("created_at, username, tahapan, sumber, nama_berkas, ringkasan")
+    .eq("tahun_anggaran", tahun).order("created_at", { ascending: false }).limit(8);
   const label = `${tahapanLabel(tahapan)} ${tahun}`;
+  const kolomTahapan = `pagu_${tahapan}`;
 
   return (
     <div className="space-y-6">
@@ -19,34 +19,45 @@ export default async function RekeningImportPage() {
         <Link href="/rekening" className="text-xs text-slate-500 hover:text-brand-700 inline-flex items-center gap-1"><ArrowLeft className="h-3.5 w-3.5" /> Rekening &amp; Pagu</Link>
         <h1 className="page-title mt-2">Impor / Perbarui Pagu dari Excel</h1>
         <p className="page-sub">
-          Tujuan: <b>{label}</b> (ganti lewat menu periode). Baris yang rekeningnya sudah ada diperbarui paginya; rekening, sub kegiatan,
-          atau kegiatan yang belum ada dibuat otomatis bila namanya diisi. Selalu periksa pratinjau sebelum menyimpan.
+          Tujuan: <b>{label}</b> (ganti lewat menu periode). Yang disimpan hanya kolom <code>{kolomTahapan}</code>.
+          Selalu periksa pratinjau sebelum menyimpan; seluruh penyimpanan berlangsung dalam satu transaksi (gagal = tidak ada yang berubah).
         </p>
       </div>
 
-      <div className="card p-5 text-sm text-slate-600 space-y-2">
-        <p className="font-medium text-slate-900">Format berkas</p>
-        <p>Kolom wajib: <code>kode_rekening</code>, <code>sumber_dana</code>, <code>pagu_anggaran</code>. Untuk sub kegiatan/rekening baru isi juga
-          <code> kode_sub_kegiatan</code>, <code>nama_sub_kegiatan</code>, <code>jenis_belanja</code> (uraian), serta <code>kode_kegiatan</code>/<code>nama_kegiatan</code> dan
-          <code> kode_program</code>/<code>nama_program</code> bila tingkat itu juga baru. Opsional: <code>kelompok_belanja</code>, <code>nama_pptk</code>.</p>
-        <a className="btn-secondary !py-1.5 inline-flex" href="/templates/template-rekening-pagu.csv" download><Download className="h-4 w-4" /> Unduh template (CSV)</a>
+      <div className="card p-5 text-sm text-slate-600 space-y-3">
+        <p className="font-medium text-slate-900">Satu format tetap untuk semua tahapan</p>
+        <ol className="list-decimal pl-5 space-y-1">
+          <li>Unduh <b>format isian</b> — berisi seluruh rekening Tahun Anggaran {tahun} dengan tiga kolom pagu: <code>pagu_murni</code>, <code>pagu_pergeseran</code>, <code>pagu_perubahan</code>.</li>
+          <li>Pada tahapan {tahapanLabel(tahapan)}, ubah <b>hanya kolom <code>{kolomTahapan}</code></b> (kosong = baris dilewati). Kolom tahapan lain tidak diimpor; bila beda dari database, diberi peringatan.</li>
+          <li>Rekening baru: tambah baris, kosongkan <code>id_rekening</code>. Koreksi kode/uraian/sumber dana yang salah: ubah di barisnya, <b>jangan hapus <code>id_rekening</code></b> — tercatat sebagai koreksi (kode lama → baru).</li>
+          <li>Unggah, periksa pratinjau (galat, saran kode mirip, peringatan), centang konfirmasi bila diminta, lalu simpan.</li>
+        </ol>
+        <div className="flex flex-wrap gap-2">
+          <a className="btn-primary !py-1.5 inline-flex" href="/api/rekening/format"><Download className="h-4 w-4" /> Unduh format isian (data {tahun})</a>
+          <a className="btn-secondary !py-1.5 inline-flex" href="/api/rekening/format?kosong=1"><Download className="h-4 w-4" /> Format kosong (tahun anggaran baru)</a>
+        </div>
       </div>
 
-      <RekeningImport periode={label} />
+      <RekeningImport periode={label} tahun={tahun} tahapan={tahapan} />
 
       <section className="card p-5">
-        <h2 className="font-serif text-lg text-slate-900 mb-3">Riwayat perubahan pagu terakhir</h2>
-        {(log ?? []).length === 0 ? <p className="text-sm text-slate-500">Belum ada riwayat (atau migrasi 20260804000000_anggaran_log.sql belum dijalankan).</p> : (
-          <div className="overflow-x-auto"><table className="w-full text-xs min-w-[700px]">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-serif text-lg text-slate-900">Penyimpanan terakhir</h2>
+          <Link href="/rekening/riwayat" className="text-xs text-brand-700 hover:underline inline-flex items-center gap-1"><History className="h-3.5 w-3.5" /> Riwayat lengkap per rekening</Link>
+        </div>
+        {(batch ?? []).length === 0 ? <p className="text-sm text-slate-500">Belum ada riwayat (atau migrasi 20260810000000_audit_pagu_dan_simpan_atomik.sql belum dijalankan).</p> : (
+          <div className="overflow-x-auto"><table className="w-full text-xs min-w-[640px]">
             <thead><tr className="text-left text-slate-400 border-b border-slate-100">
-              <th className="py-2 font-medium">Waktu</th><th className="font-medium">Oleh</th><th className="font-medium">Tahapan</th><th className="font-medium">Aksi</th>
-              <th className="font-medium">Kode Rekening</th><th className="font-medium text-right">Lama</th><th className="font-medium text-right">Baru</th></tr></thead>
-            <tbody>{(log ?? []).map((l: any, i: number) => (
-              <tr key={i} className="border-b border-slate-50">
-                <td className="py-1.5 text-slate-500">{new Date(l.created_at).toLocaleString("id-ID")}</td><td>{l.username || "-"}</td>
-                <td>{tahapanLabel(l.tahapan)}</td><td>{l.aksi} ({l.sumber})</td>
-                <td className="font-mono text-slate-600">{l.kode_rekening}</td><td className="text-right">{rp(l.pagu_lama)}</td><td className="text-right">{rp(l.pagu_baru)}</td>
-              </tr>))}</tbody>
+              <th className="py-2 font-medium">Waktu</th><th className="font-medium">Oleh</th><th className="font-medium">Tahapan</th><th className="font-medium">Asal</th><th className="font-medium">Berkas</th><th className="font-medium">Hasil</th></tr></thead>
+            <tbody>{(batch ?? []).map((b: any, i: number) => {
+              const h = b.ringkasan?.hasil ?? b.ringkasan;
+              return (
+                <tr key={i} className="border-b border-slate-50">
+                  <td className="py-1.5 text-slate-500">{new Date(b.created_at).toLocaleString("id-ID")}</td><td>{b.username || "-"}</td>
+                  <td>{tahapanLabel(b.tahapan)}</td><td>{b.sumber}</td><td className="text-slate-600">{b.nama_berkas || "-"}</td>
+                  <td className="text-slate-500">{h ? Object.entries(h).filter(([k, v]) => ["tambah", "ubah", "koreksi", "rekeningBaru", "ditambah"].includes(k) && Number(v) > 0).map(([k, v]) => `${k} ${v}`).join(", ") || "tanpa perubahan" : "-"}</td>
+                </tr>);
+            })}</tbody>
           </table></div>
         )}
       </section>

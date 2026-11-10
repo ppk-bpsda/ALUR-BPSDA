@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getPeriode } from "@/lib/periode";
-import { bacaWorkbook, susunRencana, MAKS_BARIS } from "@/lib/anggaran/pagu";
+import { bacaWorkbook, susunRencana, ringkasRencana, MAKS_BARIS } from "@/lib/anggaran/pagu";
 import { muatDataAcuan } from "@/lib/anggaran/muat";
 import { terapkanRencana } from "@/lib/anggaran/simpan";
+import { friendlyError } from "@/lib/flash";
 import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +15,16 @@ const MAKS_BYTE = 4 * 1024 * 1024;
 
 /**
  * Impor / pembaruan pagu dari Excel untuk periode aktif (Tahun Anggaran + Tahapan).
- * ?mode=pratinjau (default) hanya menghitung rencana; ?mode=simpan menyimpannya
- * (ditolak bila masih ada baris galat). Pratinjau & simpan memakai fungsi yang sama.
+ * ?mode=pratinjau (default) hanya menghitung rencana; ?mode=simpan menyimpannya.
+ * Pratinjau & simpan memakai fungsi yang sama, jadi yang dilihat = yang disimpan.
+ *
+ * Pengaman saat simpan:
+ *  - ditolak bila masih ada baris galat;
+ *  - ditolak bila periode (tahun+tahapan) di layar berbeda dari periode aktif sekarang
+ *    (mis. periode diganti di tab lain);
+ *  - baris yang perlu diperiksa (rekening baru di luar katalog, koreksi master) hanya
+ *    disimpan bila konfirmasi=1;
+ *  - database menolak bila pagu sudah diubah pengguna lain sejak pratinjau.
  */
 export async function POST(req: NextRequest) {
   const auth = await requireUser();
@@ -29,6 +38,14 @@ export async function POST(req: NextRequest) {
   if (f.size > MAKS_BYTE) return NextResponse.json({ error: "Ukuran berkas melebihi 4 MB." }, { status: 400 });
 
   const { tahun, tahapan } = await getPeriode();
+
+  if (simpan) {
+    const dilihat = String(form.get("periode") || "");
+    if (dilihat && dilihat !== `${tahun}|${tahapan}`) {
+      return NextResponse.json({ error: "Periode aktif berubah sejak pratinjau (mungkin diganti di tab lain). Muat ulang halaman lalu periksa kembali." }, { status: 409 });
+    }
+  }
+
   const { baris, galat } = bacaWorkbook(Buffer.from(await f.arrayBuffer()));
   if (galat) return NextResponse.json({ error: galat }, { status: 400 });
   if (baris.length === 0) return NextResponse.json({ error: "Tidak ada baris data pada berkas." }, { status: 400 });
@@ -37,26 +54,21 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
     const acuan = await muatDataAcuan(supabase, tahun, tahapan);
-    const rencana = susunRencana(baris, acuan);
-    const ringkasan = {
-      total: rencana.length,
-      baru: rencana.filter((r) => r.status === "baru").length,
-      ubah: rencana.filter((r) => r.status === "ubah").length,
-      sama: rencana.filter((r) => r.status === "sama").length,
-      galat: rencana.filter((r) => r.status === "galat").length,
-      subBaru: new Set(rencana.filter((r) => r.buat_sub_kegiatan).map((r) => r.kode_sub_kegiatan)).size,
-      selisih: rencana.reduce((s, r) => (r.status === "galat" ? s : s + r.selisih), 0),
-    };
+    const rencana = susunRencana(baris, acuan, tahapan);
+    const ringkasan = ringkasRencana(rencana, acuan);
 
-    if (!simpan) return NextResponse.json({ tahun, tahapan, ringkasan, rencana });
+    if (!simpan) return NextResponse.json({ tahun, tahapan, ringkasan, rencana, katalogAktif: acuan.katalogBelanja.size > 0 });
 
     if (ringkasan.galat > 0) return NextResponse.json({ error: "Masih ada baris galat. Perbaiki berkas lalu periksa ulang.", ringkasan }, { status: 400 });
-    if (ringkasan.baru + ringkasan.ubah === 0) return NextResponse.json({ error: "Tidak ada perubahan untuk disimpan." }, { status: 400 });
+    if (ringkasan.baru + ringkasan.ubah + ringkasan.koreksi === 0) return NextResponse.json({ error: "Tidak ada perubahan untuk disimpan.", ringkasan }, { status: 400 });
+    if (ringkasan.perluKonfirmasi > 0 && form.get("konfirmasi") !== "1") {
+      return NextResponse.json({ error: `Ada ${ringkasan.perluKonfirmasi} baris yang harus diperiksa dulu (rekening baru di luar katalog / koreksi kode). Centang konfirmasi setelah memeriksanya.`, ringkasan }, { status: 400 });
+    }
 
-    const hasil = await terapkanRencana(supabase, tahun, tahapan, rencana);
-    revalidatePath("/rekening"); revalidatePath("/rekap-pagu"); revalidatePath("/anggaran-kas"); revalidatePath("/rekap");
+    const hasil = await terapkanRencana(supabase, tahun, tahapan, rencana, f.name, ringkasan);
+    for (const p of ["/rekening", "/rekap-pagu", "/anggaran-kas", "/rekap"]) revalidatePath(p);
     return NextResponse.json({ ok: true, hasil, ringkasan });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Gagal memproses berkas." }, { status: 500 });
+    return NextResponse.json({ error: friendlyError(e) }, { status: 500 });
   }
 }

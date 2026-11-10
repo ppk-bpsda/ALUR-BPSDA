@@ -4,10 +4,11 @@ import { addRekening, updateRekening, deleteRekening, addKegiatan, addSubKegiata
 import { formatRupiah } from "@/lib/terbilang";
 import { kodeRekeningBelanja } from "@/lib/format";
 import Link from "next/link";
-import { Trash2, Copy, FileSpreadsheet } from "lucide-react";
+import { Trash2, Copy, FileSpreadsheet, Download, History, CheckCircle2 } from "lucide-react";
 import TambahRekeningFields from "./TambahRekeningFields";
 
-export default async function RekeningPage() {
+export default async function RekeningPage(props: { searchParams: Promise<{ ok?: string }> }) {
+  const sp = await props.searchParams;
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
 
@@ -82,8 +83,12 @@ export default async function RekeningPage() {
         </p>
       </div>
 
+      {sp.ok && <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0" /> {sp.ok}</p>}
+
       <div className="flex flex-wrap gap-2">
         <Link href="/rekening/import" className="btn-primary"><FileSpreadsheet className="h-4 w-4" /> Impor / perbarui pagu dari Excel</Link>
+        <a href="/api/rekening/format" className="btn-secondary"><Download className="h-4 w-4" /> Unduh format isian (Excel)</a>
+        <Link href="/rekening/riwayat" className="btn-secondary"><History className="h-4 w-4" /> Riwayat perubahan</Link>
         <Link href="/rekap-pagu" className="btn-secondary">Perbandingan pagu antartahapan</Link>
         <Link href="/anggaran-kas" className="btn-secondary">Anggaran kas triwulanan</Link>
       </div>
@@ -146,6 +151,7 @@ export default async function RekeningPage() {
                 <form action={updateRekening} className="contents">
                   <input type="hidden" name="dpa_id" value={row.id} />
                   <input type="hidden" name="rekening_id" value={row.rekening?.id} />
+                  <input type="hidden" name="pagu_lama" value={row.pagu_anggaran} />
                   <td className="px-3 py-2">
                     <select
                       name="sub_kegiatan_id"
@@ -168,6 +174,9 @@ export default async function RekeningPage() {
                     <p className="text-[10px] text-slate-400 mt-1">
                       Kode Rekening Belanja: {kodeRekeningBelanja(row.rekening?.kode_rekening)}
                     </p>
+                    <label className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 cursor-pointer" title="Centang hanya bila Anda mengubah kode dan kode baru memang tidak ada di katalog resmi">
+                      <input type="checkbox" name="di_luar_katalog" value="1" className="accent-[#237469]" /> kode di luar katalog
+                    </label>
                   </td>
                   <td className="px-3 py-2">
                     <input

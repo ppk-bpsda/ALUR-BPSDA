@@ -114,7 +114,12 @@ export default function TambahRekeningFields({
         <p className="text-[10px] text-slate-400 mt-1">
           Kode LENGKAP = kode sub kegiatan + kode rekening belanja. Jika yang diisi hanya kode belanja (6 segmen),
           sistem otomatis menambahkan kode sub kegiatan yang dipilih -- supaya tidak dobel.
+          Kode belanja dicek ke katalog resmi; bila salah ketik, sistem menampilkan saran kode yang mirip.
         </p>
+        <label className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" name="di_luar_katalog" value="1" className="accent-[#237469]" />
+          Kode ini memang baru / tidak ada di katalog
+        </label>
       </div>
       <div className="sm:col-span-2">
         <label className="text-xs font-medium text-slate-600 mb-1 block">Uraian Belanja</label>

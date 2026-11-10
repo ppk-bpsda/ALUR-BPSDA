@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Building2, Wallet, ClipboardList, ShieldCheck,
-  FileSpreadsheet, Settings, Plane, Users, BadgeDollarSign, Plus, Upload, CalendarRange, GitCompare, CalendarClock,
+  FileSpreadsheet, Settings, Plane, Users, BadgeDollarSign, Plus, Upload, CalendarRange, GitCompare, CalendarClock, History,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,6 +57,7 @@ export const extraCommands: Array<{ name: string; href: string; hint: string; ic
   { name: "Buat pengajuan belanja baru", href: "/pengajuan/baru", hint: "Tindakan", icon: Plus, keywords: "tambah baru spj" },
   { name: "Impor pengajuan dari Excel", href: "/pengajuan/import", hint: "Tindakan", icon: Upload, keywords: "import unggah excel xlsx" },
   { name: "Impor / perbarui pagu dari Excel", href: "/rekening/import", hint: "Tindakan", icon: Upload, keywords: "pagu perubahan pergeseran excel sub kegiatan belanja baru" },
+  { name: "Riwayat perubahan pagu & kode rekening", href: "/rekening/riwayat", hint: "Telusuri", icon: History, keywords: "riwayat audit log salah kode rekening koreksi lacak perubahan pagu" },
   { name: "Buat kuitansi SPPD baru", href: "/perjalanan-dinas/baru", hint: "Tindakan", icon: Plane, keywords: "tambah perjadin sppd" },
   { name: "Ganti periode (tahun & tahapan)", href: "/periode", hint: "Tindakan", icon: CalendarRange, keywords: "tahun anggaran tahapan murni pergeseran perubahan" },
   { name: "Akses aplikasi (akun login)", href: "/akun", hint: "Tindakan", icon: ShieldCheck, keywords: "akun password sandi pengguna" },
@@ -79,6 +80,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   baru: "Baru",
   edit: "Ubah",
   import: "Impor",
+  riwayat: "Riwayat Pagu",
   "perjalanan-dinas": "Kuitansi SPPD",
   pegawai: "Data Pegawai",
   sbu: "SBU Uang Harian",
