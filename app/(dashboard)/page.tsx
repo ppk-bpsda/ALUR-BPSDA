@@ -1,3 +1,4 @@
+import { ambilSemua } from "@/lib/anggaran/muat";
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
 import { getPeriode, tahapanLabel, tahapanUpTo } from "@/lib/periode";
@@ -74,11 +75,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
     { data: dpaList },
     { data: realisasiList },
   ] = await Promise.all([
-    supabase
-      .from("rekap_realisasi")
-      .select("pagu_anggaran, total_realisasi")
-      .eq("tahun_anggaran", tahun)
-      .eq("tahapan", tahapan),
+    ambilSemua<any>((a, b) =>
+      supabase.from("rekap_realisasi").select("dpa_id, pagu_anggaran, total_realisasi")
+        .eq("tahun_anggaran", tahun).eq("tahapan", tahapan).order("dpa_id").range(a, b)
+    ).then((data) => ({ data })),
     // Diurutkan berdasarkan tanggal transaksi/Nota Dinas terbaru, lalu created_at.
     supabase
       .from("pengajuan_belanja")
@@ -96,26 +96,20 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
       .eq("dpa.tahun_anggaran", tahun)
       .eq("dpa.tahapan", tahapan)
       .gte("created_at", awalBulan),
-    supabase
-      .from("pengajuan_belanja")
-      .select("status, dpa:dpa!inner(tahun_anggaran, tahapan)")
-      .eq("dpa.tahun_anggaran", tahun)
-      .eq("dpa.tahapan", tahapan),
-    supabase
-      .from("dpa")
-      .select(
-        "id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))"
-      )
-      .eq("tahun_anggaran", tahun)
-      .eq("tahapan", tahapan),
-    supabase
-      .from("pengajuan_belanja")
-      .select(
-        "id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))"
-      )
-      .eq("dpa.tahun_anggaran", tahun)
-      .in("dpa.tahapan", tahapanUpTo(tahapan))
-      .eq("status", "dicairkan"),
+    ambilSemua<any>((a, b) =>
+      supabase.from("pengajuan_belanja").select("id, status, dpa:dpa!inner(tahun_anggaran, tahapan)")
+        .eq("dpa.tahun_anggaran", tahun).eq("dpa.tahapan", tahapan).order("id").range(a, b)
+    ).then((data) => ({ data })),
+    ambilSemua<any>((a, b) =>
+      supabase.from("dpa")
+        .select("id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))")
+        .eq("tahun_anggaran", tahun).eq("tahapan", tahapan).order("id").range(a, b)
+    ).then((data) => ({ data })),
+    ambilSemua<any>((a, b) =>
+      supabase.from("pengajuan_belanja")
+        .select("id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))")
+        .eq("dpa.tahun_anggaran", tahun).in("dpa.tahapan", tahapanUpTo(tahapan)).eq("status", "dicairkan").order("id").range(a, b)
+    ).then((data) => ({ data })),
   ]);
 
   const totalPagu = (rekap ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);

@@ -3,11 +3,12 @@ import { getPeriode, tahapanLabel, TAHAPAN_OPTIONS } from "@/lib/periode";
 import { addRekening, updateRekening, deleteRekening, addKegiatan, addSubKegiatan, salinDariTahapan } from "./actions";
 import { formatRupiah } from "@/lib/terbilang";
 import { kodeRekeningBelanja } from "@/lib/format";
+import { ambilSemua } from "@/lib/anggaran/muat";
 import Link from "next/link";
-import { Trash2, Copy, FileSpreadsheet, Download, History, CheckCircle2 } from "lucide-react";
+import { Trash2, Copy, FileSpreadsheet, Download, History, CheckCircle2, ShieldCheck } from "lucide-react";
 import TambahRekeningFields from "./TambahRekeningFields";
 
-export default async function RekeningPage(props: { searchParams: Promise<{ ok?: string }> }) {
+export default async function RekeningPage(props: { searchParams: Promise<{ ok?: string; q?: string; sub?: string; halaman?: string }> }) {
   const sp = await props.searchParams;
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
@@ -22,14 +23,17 @@ export default async function RekeningPage(props: { searchParams: Promise<{ ok?:
     { data: sumberDanaRef },
   ] =
     await Promise.all([
-      supabase
-        .from("dpa")
-        .select(
-          "id, pagu_anggaran, pptk_id, rekening:rekening_belanja(id, kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan_id, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan))"
-        )
-        .eq("tahun_anggaran", tahun)
-        .eq("tahapan", tahapan)
-        .order("id"),
+      ambilSemua<any>((a, b) =>
+        supabase
+          .from("dpa")
+          .select(
+            "id, pagu_anggaran, pptk_id, rekening:rekening_belanja(id, kode_rekening, jenis_belanja, kelompok_belanja, sumber_dana, sub_kegiatan_id, sub_kegiatan:sub_kegiatan(kode_sub_kegiatan, nama_sub_kegiatan))"
+          )
+          .eq("tahun_anggaran", tahun)
+          .eq("tahapan", tahapan)
+          .order("id")
+          .range(a, b)
+      ).then((data) => ({ data })),
       supabase
         .from("sub_kegiatan")
         .select("id, kode_sub_kegiatan, nama_sub_kegiatan")
@@ -65,6 +69,32 @@ export default async function RekeningPage(props: { searchParams: Promise<{ ok?:
     ).values()
   ).sort((a, b) => a.localeCompare(b));
 
+  // Urut menurut sub kegiatan lalu kode rekening (sebelumnya urut acak menurut ID) + pencarian + halaman
+  const urutan = [...(dpaList ?? [])].sort(
+    (a: any, b: any) =>
+      String(a.rekening?.sub_kegiatan?.kode_sub_kegiatan).localeCompare(String(b.rekening?.sub_kegiatan?.kode_sub_kegiatan)) ||
+      String(a.rekening?.kode_rekening).localeCompare(String(b.rekening?.kode_rekening)) ||
+      String(a.rekening?.sumber_dana).localeCompare(String(b.rekening?.sumber_dana))
+  );
+  const q = String(sp.q ?? "").trim().toLowerCase().slice(0, 80);
+  const subFilter = String(sp.sub ?? "");
+  const terfilter = urutan.filter((r: any) => {
+    if (subFilter && r.rekening?.sub_kegiatan_id !== subFilter) return false;
+    if (!q) return true;
+    return `${r.rekening?.kode_rekening} ${r.rekening?.jenis_belanja} ${r.rekening?.sumber_dana}`.toLowerCase().includes(q);
+  });
+  const PER_HALAMAN = 100;
+  const totalHalaman = Math.max(1, Math.ceil(terfilter.length / PER_HALAMAN));
+  const halaman = Math.min(totalHalaman, Math.max(1, Number(sp.halaman) || 1));
+  const barisHalaman = terfilter.slice((halaman - 1) * PER_HALAMAN, halaman * PER_HALAMAN);
+  const hrefHal = (h: number) => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (subFilter) p.set("sub", subFilter);
+    if (h > 1) p.set("halaman", String(h));
+    const t = p.toString();
+    return `/rekening${t ? `?${t}` : ""}`;
+  };
   const totalPagu = (dpaList ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
   const tahapanLain = TAHAPAN_OPTIONS.filter((t) => t.value !== tahapan);
 
@@ -88,6 +118,7 @@ export default async function RekeningPage(props: { searchParams: Promise<{ ok?:
       <div className="flex flex-wrap gap-2">
         <Link href="/rekening/import" className="btn-primary"><FileSpreadsheet className="h-4 w-4" /> Impor / perbarui pagu dari Excel</Link>
         <a href="/api/rekening/format" className="btn-secondary"><Download className="h-4 w-4" /> Unduh format isian (Excel)</a>
+        <Link href="/rekening/pemeriksaan" className="btn-secondary"><ShieldCheck className="h-4 w-4" /> Pemeriksaan data</Link>
         <Link href="/rekening/riwayat" className="btn-secondary"><History className="h-4 w-4" /> Riwayat perubahan</Link>
         <Link href="/rekap-pagu" className="btn-secondary">Perbandingan pagu antartahapan</Link>
         <Link href="/anggaran-kas" className="btn-secondary">Anggaran kas triwulanan</Link>
@@ -124,6 +155,23 @@ export default async function RekeningPage(props: { searchParams: Promise<{ ok?:
         </form>
       )}
 
+      <form method="get" className="bg-white rounded-xl border border-slate-200 p-3 flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[220px]">
+          <label className="text-xs font-medium text-slate-600 block mb-1">Cari kode rekening / uraian / sumber dana</label>
+          <input name="q" defaultValue={sp.q ?? ""} placeholder="mis. 5.1.02.01.001.00024 atau alat tulis" className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white" />
+        </div>
+        <div className="min-w-[220px]">
+          <label className="text-xs font-medium text-slate-600 block mb-1">Sub kegiatan</label>
+          <select name="sub" defaultValue={subFilter} className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white">
+            <option value="">Semua sub kegiatan</option>
+            {(subKegiatan ?? []).map((s: any) => <option key={s.id} value={s.id}>{s.kode_sub_kegiatan} — {s.nama_sub_kegiatan}</option>)}
+          </select>
+        </div>
+        <button type="submit" className="btn-primary">Cari</button>
+        {(q || subFilter) && <Link href="/rekening" className="text-xs text-slate-500 hover:underline pb-2">Reset</Link>}
+        <p className="text-xs text-slate-500 pb-2 ml-auto">{terfilter.length} dari {urutan.length} rekening · total pagu {formatRupiah(totalPagu)}</p>
+      </form>
+
       <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
         <table className="w-full text-sm min-w-[1100px]">
           <thead>
@@ -139,14 +187,14 @@ export default async function RekeningPage(props: { searchParams: Promise<{ ok?:
             </tr>
           </thead>
           <tbody>
-            {(dpaList ?? []).length === 0 && (
+            {terfilter.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-6 text-center text-slate-400 text-sm">
-                  Belum ada rekening di tahapan ini. Tambahkan lewat form di bawah.
+                  {urutan.length === 0 ? "Belum ada rekening di tahapan ini. Tambahkan lewat form di bawah." : "Tidak ada rekening yang cocok dengan pencarian."}
                 </td>
               </tr>
             )}
-            {(dpaList ?? []).map((row: any) => (
+            {barisHalaman.map((row: any) => (
               <tr key={row.id} className="border-b border-slate-50 last:border-0 align-top">
                 <form action={updateRekening} className="contents">
                   <input type="hidden" name="dpa_id" value={row.id} />
@@ -255,6 +303,15 @@ export default async function RekeningPage(props: { searchParams: Promise<{ ok?:
           </tfoot>
         </table>
       </div>
+      {totalHalaman > 1 && (
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>Halaman {halaman} dari {totalHalaman} ({PER_HALAMAN} baris per halaman)</span>
+          <span className="flex gap-4">
+            {halaman > 1 && <Link href={hrefHal(halaman - 1)} className="hover:underline">← Sebelumnya</Link>}
+            {halaman < totalHalaman && <Link href={hrefHal(halaman + 1)} className="hover:underline">Berikutnya →</Link>}
+          </span>
+        </div>
+      )}
 
       <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-5">
         <p className="text-sm font-medium text-slate-900 mb-3">+ Tambah Rekening &amp; Pagu Baru</p>

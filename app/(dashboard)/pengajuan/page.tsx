@@ -1,3 +1,4 @@
+import { ambilSemua } from "@/lib/anggaran/muat";
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
 import { getPeriode, tahapanLabel, tahapanUpTo } from "@/lib/periode";
@@ -49,10 +50,10 @@ export default async function PengajuanPage(props: {
       .select("id, nama_sub_kegiatan, kegiatan_id")
       .eq("tahun_anggaran", tahun)
       .order("kode_sub_kegiatan"),
-    supabase
-      .from("rekening_belanja")
-      .select("id, jenis_belanja, sub_kegiatan_id")
-      .order("jenis_belanja"),
+    ambilSemua<any>((a, b) =>
+      supabase.from("rekening_belanja").select("id, jenis_belanja, sub_kegiatan_id, sub_kegiatan!inner(tahun_anggaran)")
+        .eq("sub_kegiatan.tahun_anggaran", tahun).order("jenis_belanja").order("id").range(a, b)
+    ).then((data) => ({ data })),
   ]);
 
   // Realisasi MENGAKUMULASI tahapan sebelumnya sampai dengan tahapan yang
@@ -60,6 +61,7 @@ export default async function PengajuanPage(props: {
   // tahapanUpTo() di lib/periode.ts. Contoh: tahapan Murni hanya
   // menampilkan realisasi Murni; tahapan Pergeseran menampilkan
   // Murni + Pergeseran; tahapan Perubahan menampilkan ketiganya.
+  const bangunQuery = () => {
   let query = supabase
     .from("pengajuan_belanja")
     .select(
@@ -67,14 +69,18 @@ export default async function PengajuanPage(props: {
     )
     .eq("dpa.tahun_anggaran", tahun)
     .in("dpa.tahapan", tahapanUpTo(tahapan))
-    .order("tanggal", { ascending: false });
+    .order("tanggal", { ascending: false })
+    .order("id");
   if (statusFilter) query = query.eq("status", statusFilter);
   if (kegiatanFilter) query = query.eq("dpa.rekening.sub_kegiatan.kegiatan_id", kegiatanFilter);
   if (subKegiatanFilter) query = query.eq("dpa.rekening.sub_kegiatan_id", subKegiatanFilter);
   if (rekeningFilter) query = query.eq("dpa.rekening_id", rekeningFilter);
   if (dariFilter) query = query.gte("tanggal", dariFilter);
   if (sampaiFilter) query = query.lte("tanggal", sampaiFilter);
-  const { data: list } = await query;
+  return query;
+  };
+  // semua halaman (PostgREST memotong 1000 baris) -- total & daftar harus lengkap
+  const list = await ambilSemua<any>((a, b) => bangunQuery().range(a, b));
 
   // Nominal Realisasi dari hasil filter yang sedang ditampilkan --
   // konsisten dengan definisi Realisasi di Dashboard/rekap: hanya

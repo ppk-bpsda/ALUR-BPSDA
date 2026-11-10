@@ -1,3 +1,4 @@
+import { ambilSemua } from "@/lib/anggaran/muat";
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
 import { getPeriode, tahapanLabel } from "@/lib/periode";
@@ -5,12 +6,11 @@ import { getPeriode, tahapanLabel } from "@/lib/periode";
 export default async function RekapPage() {
   const { tahun, tahapan } = await getPeriode();
   const supabase = await createClient();
-  const { data: rekap } = await supabase
-    .from("rekap_realisasi")
-    .select("*")
-    .eq("tahun_anggaran", tahun)
-    .eq("tahapan", tahapan)
-    .order("kode_sub_kegiatan");
+  const rekap = await ambilSemua<any>((a, b) =>
+    supabase.from("rekap_realisasi").select("*")
+      .eq("tahun_anggaran", tahun).eq("tahapan", tahapan)
+      .order("kode_sub_kegiatan").order("dpa_id").range(a, b)
+  );
 
   const totalPagu = (rekap ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
   const totalRealisasi = (rekap ?? []).reduce((s, r: any) => s + Number(r.total_realisasi || 0), 0);

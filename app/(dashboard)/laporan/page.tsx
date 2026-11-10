@@ -1,3 +1,4 @@
+import { ambilSemua } from "@/lib/anggaran/muat";
 import { createClient } from "@/lib/supabase/server";
 import { getPeriode, tahapanLabel, tahapanUpTo } from "@/lib/periode";
 import { formatRupiah } from "@/lib/terbilang";
@@ -28,27 +29,24 @@ export default async function LaporanPage(props: { searchParams: Promise<{ by?: 
 
   // Semua rekening (DPA) di periode aktif -- sumber pagu per PPTK/Kegiatan/
   // Sub Kegiatan.
-  const { data: dpaList } = await supabase
-    .from("dpa")
-    .select(
-      "id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))"
-    )
-    .eq("tahun_anggaran", tahun)
-    .eq("tahapan", tahapan);
+  const dpaList = await ambilSemua<any>((a, b) =>
+    supabase.from("dpa")
+      .select("id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))")
+      .eq("tahun_anggaran", tahun).eq("tahapan", tahapan).order("id").range(a, b)
+  );
 
   // Semua pengajuan yang sudah disetujui/dicairkan di periode aktif --
   // sumber realisasi, dan tanggal untuk pengelompokan bulan/triwulan.
   // Realisasi MENGAKUMULASI tahapan yang urutannya <= tahapan yang
   // sedang dipilih (Murni -> Pergeseran -> Perubahan), bukan hanya
   // tahapan yang persis sama -- lihat tahapanUpTo() di lib/periode.ts.
-  const { data: realisasiList } = await supabase
-    .from("pengajuan_belanja")
-    .select(
-      "id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))"
-    )
-    .eq("dpa.tahun_anggaran", tahun)
-    .in("dpa.tahapan", tahapanUpTo(tahapan))
-    .in("status", ["disetujui", "dicairkan"]);
+  // Definisi realisasi SAMA dengan Dashboard & Rekap Realisasi: hanya status "dicairkan"
+  // (sebelumnya laporan ini ikut menghitung "disetujui" sehingga angkanya berbeda antar menu).
+  const realisasiList = await ambilSemua<any>((a, b) =>
+    supabase.from("pengajuan_belanja")
+      .select("id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))")
+      .eq("dpa.tahun_anggaran", tahun).in("dpa.tahapan", tahapanUpTo(tahapan)).eq("status", "dicairkan").order("id").range(a, b)
+  );
 
   type Row = { key: string; pagu: number; realisasi: number };
   const rows = new Map<string, Row>();

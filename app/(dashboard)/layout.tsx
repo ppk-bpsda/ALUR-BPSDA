@@ -4,6 +4,8 @@ import Sidebar from "@/components/Sidebar";
 import AccountMenu from "@/components/AccountMenu";
 import FlashBanner from "@/components/FlashBanner";
 import MobileMenuButton from "@/components/MobileMenuButton";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import CommandPalette from "@/components/CommandPalette";
 import { getCurrentProfile } from "@/lib/session";
 import { getPeriode, tahapanLabel } from "@/lib/periode";
 import { CalendarRange } from "lucide-react";
@@ -20,8 +22,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white/90 backdrop-blur border-b border-slate-200/80 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-20">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <MobileMenuButton />
+            <Breadcrumbs />
             <Link
               href="/periode"
               className="hidden sm:inline-flex items-center gap-2 rounded-full bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-100 px-3 py-1.5 text-xs font-medium hover:bg-brand-100 transition-colors"
@@ -31,12 +34,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
               TA {tahun} &middot; {tahapanLabel(tahapan)}
             </Link>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+          <CommandPalette />
           <AccountMenu
             displayName={profile.displayName}
             initials={profile.initials}
             tahun={tahun}
             tahapanLabel={tahapanLabel(tahapan)}
           />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl animate-fade-up">
