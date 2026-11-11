@@ -79,3 +79,14 @@ Menu samping Penganggaran kini hanya 3: **Input Anggaran (DPA)** · **Bandingkan
 | Mulai tahapan baru | **Salin dari tahapan lain** |
 
 Baris yang kemungkinan salah ditandai ⚠ langsung di daftar (dengan alasan), plus chip "Belanja baru". Setelah simpan/galat, pengguna kembali ke halaman asalnya.
+
+---
+# Tahap 4: Dashboard infografis interaktif
+Komponen baru `components/DashboardCharts.tsx` (recharts, sudah ada di dependency) dipanggil dari `app/(dashboard)/page.tsx`. Tidak ada migrasi baru.
+- **Serapan Anggaran**: gauge realisasi vs laju waktu tahun anggaran (penanda "sesuai / tertinggal").
+- **Tren Realisasi**: per bulan (batang + garis kumulatif + laju ideal) atau per triwulan vs rencana Anggaran Kas.
+- **Status Pengajuan**: donat, klik membuka daftar pengajuan berstatus itu.
+- **Komposisi Pagu**: donat, ganti Kelompok Belanja / Sumber Dana.
+- **Perlu Perhatian**: realisasi melebihi pagu, pengajuan menunggu persetujuan, belum dicairkan, draft, belanja tanpa PPTK.
+- **Peringkat Serapan**: PPTK / Kegiatan / Sub Kegiatan, urut pagu / realisasi / %, tampilkan semua.
+Realisasi tetap = status "dicairkan" (sama dengan Rekap & Laporan). Tabel Pengajuan Terbaru dan Laporan Realisasi tetap ada di bawahnya.
