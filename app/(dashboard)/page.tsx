@@ -2,11 +2,9 @@ import { ambilSemua } from "@/lib/anggaran/muat";
 import { createClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/terbilang";
 import { getPeriode, tahapanLabel, tahapanUpTo } from "@/lib/periode";
-import {
-  Wallet, Receipt, FileSpreadsheet, ClipboardList,
-  FilePen, Send, CheckCircle2, Landmark, XCircle, ArrowUpRight,
-} from "lucide-react";
+import { Wallet, Receipt, FileSpreadsheet, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import DashboardCharts, { type DashboardData, type Grup } from "@/components/DashboardCharts";
 
 const statusStyle: Record<string, string> = {
   disetujui: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -23,23 +21,6 @@ const statusLabel: Record<string, string> = {
   dicairkan: "Dicairkan",
   ditolak: "Ditolak",
 };
-
-// Kartu Rekap Pengajuan -- urutan mengikuti alur proses dokumen (draft ->
-// diajukan -> disetujui -> dicairkan), dengan Ditolak di akhir. Tiap status
-// punya warna & ikon sendiri supaya cepat dipindai secara visual.
-const REKAP_STATUS: {
-  key: keyof typeof statusLabel;
-  icon: any;
-  card: string;
-  iconWrap: string;
-  count: string;
-}[] = [
-  { key: "draft", icon: FilePen, card: "border-slate-200 bg-slate-50/60", iconWrap: "bg-slate-200/80 text-slate-600", count: "text-slate-700" },
-  { key: "diajukan", icon: Send, card: "border-amber-200 bg-amber-50/60", iconWrap: "bg-amber-100 text-amber-600", count: "text-amber-700" },
-  { key: "disetujui", icon: CheckCircle2, card: "border-emerald-200 bg-emerald-50/60", iconWrap: "bg-emerald-100 text-emerald-600", count: "text-emerald-700" },
-  { key: "dicairkan", icon: Landmark, card: "border-sky-200 bg-sky-50/60", iconWrap: "bg-sky-100 text-sky-600", count: "text-sky-700" },
-  { key: "ditolak", icon: XCircle, card: "border-rose-200 bg-rose-50/60", iconWrap: "bg-rose-100 text-rose-600", count: "text-rose-700" },
-];
 
 type GroupBy = "pptk" | "kegiatan" | "subkegiatan" | "bulan" | "triwulan";
 
@@ -74,6 +55,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
     { data: statusRows },
     { data: dpaList },
     { data: realisasiList },
+    kasRows,
   ] = await Promise.all([
     ambilSemua<any>((a, b) =>
       supabase.from("rekap_realisasi").select("dpa_id, pagu_anggaran, total_realisasi")
@@ -102,7 +84,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
     ).then((data) => ({ data })),
     ambilSemua<any>((a, b) =>
       supabase.from("dpa")
-        .select("id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))")
+        .select("id, pagu_anggaran, pptk:pejabat_skpd(nama), rekening:rekening_belanja(kelompok_belanja, sumber_dana, sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan)))")
         .eq("tahun_anggaran", tahun).eq("tahapan", tahapan).order("id").range(a, b)
     ).then((data) => ({ data })),
     ambilSemua<any>((a, b) =>
@@ -110,6 +92,11 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
         .select("id, tanggal, jumlah_pengajuan, dpa_id, dpa:dpa!inner(tahun_anggaran, tahapan, pptk:pejabat_skpd(nama), rekening:rekening_belanja(sub_kegiatan:sub_kegiatan(nama_sub_kegiatan, kegiatan:kegiatan(nama_kegiatan))))")
         .eq("dpa.tahun_anggaran", tahun).in("dpa.tahapan", tahapanUpTo(tahapan)).eq("status", "dicairkan").order("id").range(a, b)
     ).then((data) => ({ data })),
+    // Rencana anggaran kas per triwulan (opsional: tabel bisa belum ada)
+    ambilSemua<any>((a, b) =>
+      supabase.from("anggaran_kas").select("tw1, tw2, tw3, tw4, dpa:dpa!inner(tahun_anggaran, tahapan)")
+        .eq("dpa.tahun_anggaran", tahun).eq("dpa.tahapan", tahapan).order("id").range(a, b)
+    ).catch(() => null),
   ]);
 
   const totalPagu = (rekap ?? []).reduce((s, r: any) => s + Number(r.pagu_anggaran || 0), 0);
@@ -141,32 +128,29 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
     laporanRows.set(key, existing);
   }
 
+  const SEMUA_GRUP: ("pptk" | "kegiatan" | "subkegiatan")[] = ["pptk", "kegiatan", "subkegiatan"];
+  const namaGrup = (g: "pptk" | "kegiatan" | "subkegiatan", dpaRow: any) => {
+    const rek: any = dpaRow?.rekening;
+    return g === "pptk"
+      ? dpaRow?.pptk?.nama || "-- Belum ada PPTK --"
+      : g === "kegiatan"
+      ? rek?.sub_kegiatan?.kegiatan?.nama_kegiatan || "-- Tidak diketahui --"
+      : rek?.sub_kegiatan?.nama_sub_kegiatan || "-- Tidak diketahui --";
+  };
+  const bangunGrup = (g: "pptk" | "kegiatan" | "subkegiatan"): Grup[] => {
+    const m = new Map<string, Grup>();
+    const ambil = (k: string) => m.get(k) ?? (m.set(k, { nama: k, pagu: 0, realisasi: 0 }), m.get(k)!);
+    for (const d of dpaList ?? []) ambil(namaGrup(g, d)).pagu += Number((d as any).pagu_anggaran || 0);
+    for (const p of realisasiList ?? []) ambil(namaGrup(g, (p as any).dpa)).realisasi += Number((p as any).jumlah_pengajuan || 0);
+    return Array.from(m.values());
+  };
+  const grupSemua = Object.fromEntries(SEMUA_GRUP.map((g) => [g, bangunGrup(g)])) as Record<"pptk" | "kegiatan" | "subkegiatan", Grup[]>;
+
   if (by === "pptk" || by === "kegiatan" || by === "subkegiatan") {
-    for (const d of dpaList ?? []) {
-      const rek: any = (d as any).rekening;
-      const key =
-        by === "pptk"
-          ? (d as any).pptk?.nama || "-- Belum ada PPTK --"
-          : by === "kegiatan"
-          ? rek?.sub_kegiatan?.kegiatan?.nama_kegiatan || "-- Tidak diketahui --"
-          : rek?.sub_kegiatan?.nama_sub_kegiatan || "-- Tidak diketahui --";
-      bump(key, "pagu", Number((d as any).pagu_anggaran || 0));
-    }
-    for (const p of realisasiList ?? []) {
-      const dpaRow: any = (p as any).dpa;
-      const rek: any = dpaRow?.rekening;
-      const key =
-        by === "pptk"
-          ? dpaRow?.pptk?.nama || "-- Belum ada PPTK --"
-          : by === "kegiatan"
-          ? rek?.sub_kegiatan?.kegiatan?.nama_kegiatan || "-- Tidak diketahui --"
-          : rek?.sub_kegiatan?.nama_sub_kegiatan || "-- Tidak diketahui --";
-      bump(key, "realisasi", Number((p as any).jumlah_pengajuan || 0));
-    }
+    for (const g of grupSemua[by]) laporanRows.set(g.nama, { key: g.nama, pagu: g.pagu, realisasi: g.realisasi });
   } else {
     for (const p of realisasiList ?? []) {
-      const tgl = new Date((p as any).tanggal);
-      const bulanKe = tgl.getMonth();
+      const bulanKe = Math.min(11, Math.max(0, Number(String((p as any).tanggal).slice(5, 7)) - 1));
       const key = by === "bulan" ? NAMA_BULAN[bulanKe] : `Triwulan ${Math.floor(bulanKe / 3) + 1}`;
       bump(key, "realisasi", Number((p as any).jumlah_pengajuan || 0));
     }
@@ -187,7 +171,64 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
   const totalLaporanPagu = sortedLaporanRows.reduce((s, r) => s + r.pagu, 0);
   const totalLaporanRealisasi = sortedLaporanRows.reduce((s, r) => s + r.realisasi, 0);
 
-  const totalPengajuanRekap = Object.values(rekapStatusCount).reduce((s, n) => s + n, 0);
+  // -----------------------------------------------------------------
+  // Data untuk grafik interaktif (komponen klien DashboardCharts)
+  // -----------------------------------------------------------------
+  const sekarang = Date.now();
+  const awalTA = new Date(tahun, 0, 1).getTime();
+  const akhirTA = new Date(tahun + 1, 0, 1).getTime();
+  const persenWaktu = Math.min(100, Math.max(0, ((sekarang - awalTA) / (akhirTA - awalTA)) * 100));
+
+  const perBulan = new Array(12).fill(0) as number[];
+  for (const p of realisasiList ?? []) {
+    const b = Math.min(11, Math.max(0, Number(String((p as any).tanggal).slice(5, 7)) - 1));
+    perBulan[b] += Number((p as any).jumlah_pengajuan || 0);
+  }
+  const adaKas = Array.isArray(kasRows) && kasRows.length > 0;
+  const kasTw = [0, 0, 0, 0];
+  for (const k of kasRows ?? []) ["tw1", "tw2", "tw3", "tw4"].forEach((c, i) => (kasTw[i] += Number((k as any)[c] || 0)));
+
+  const kelompok = new Map<string, number>();
+  const sumber = new Map<string, number>();
+  for (const d of dpaList ?? []) {
+    const rek: any = (d as any).rekening;
+    const v = Number((d as any).pagu_anggaran || 0);
+    const k1 = String(rek?.kelompok_belanja || "Belum diisi");
+    const k2 = String(rek?.sumber_dana || "Belum diisi");
+    kelompok.set(k1, (kelompok.get(k1) ?? 0) + v);
+    sumber.set(k2, (sumber.get(k2) ?? 0) + v);
+  }
+  const keArray = (m: Map<string, number>) => Array.from(m, ([nama, nilai]) => ({ nama, nilai })).sort((a, b) => b.nilai - a.nilai);
+
+  const melebihiPagu = (rekap ?? []).filter((r: any) => Number(r.total_realisasi || 0) > Number(r.pagu_anggaran || 0) + 0.005).length;
+  const tanpaPptk = (dpaList ?? []).filter((d: any) => !d.pptk).length;
+  const perhatian: DashboardData["perhatian"] = [];
+  if (melebihiPagu > 0) perhatian.push({ tingkat: "merah", teks: `${melebihiPagu} belanja realisasinya melebihi pagu — periksa Rekap Realisasi.`, href: "/rekap" });
+  if (rekapStatusCount.diajukan > 0) perhatian.push({ tingkat: "kuning", teks: `${rekapStatusCount.diajukan} pengajuan menunggu persetujuan.`, href: "/pengajuan?status=diajukan" });
+  if (rekapStatusCount.disetujui > 0) perhatian.push({ tingkat: "biru", teks: `${rekapStatusCount.disetujui} pengajuan sudah disetujui, belum dicairkan.`, href: "/pengajuan?status=disetujui" });
+  if (rekapStatusCount.draft > 0) perhatian.push({ tingkat: "biru", teks: `${rekapStatusCount.draft} draft pengajuan belum diajukan.`, href: "/pengajuan?status=draft" });
+  if (tanpaPptk > 0) perhatian.push({ tingkat: "kuning", teks: `${tanpaPptk} belanja belum memiliki PPTK.`, href: "/rekening" });
+
+  const dashboardData: DashboardData = {
+    tahun, tahapan: tahapanLabel(tahapan), totalPagu, totalRealisasi, persenWaktu,
+    bulanan: NAMA_BULAN.map((n, i) => ({ label: n.slice(0, 3), realisasi: perBulan[i] })),
+    triwulan: [0, 1, 2, 3].map((i) => ({
+      label: `TW ${i + 1}`,
+      kas: adaKas ? kasTw[i] : null,
+      realisasi: perBulan.slice(i * 3, i * 3 + 3).reduce((x, y) => x + y, 0),
+    })),
+    adaKas,
+    status: [
+      { key: "draft", label: "Draft", jumlah: rekapStatusCount.draft, warna: "#94a3b8" },
+      { key: "diajukan", label: "Diajukan", jumlah: rekapStatusCount.diajukan, warna: "#f59e0b" },
+      { key: "disetujui", label: "Disetujui", jumlah: rekapStatusCount.disetujui, warna: "#10b981" },
+      { key: "dicairkan", label: "Dicairkan", jumlah: rekapStatusCount.dicairkan, warna: "#0ea5e9" },
+      { key: "ditolak", label: "Ditolak", jumlah: rekapStatusCount.ditolak, warna: "#f43f5e" },
+    ],
+    grup: grupSemua,
+    komposisi: { kelompok: keArray(kelompok), sumber: keArray(sumber) },
+    perhatian,
+  };
 
   return (
     <div className="space-y-7">
@@ -212,38 +253,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ lap
         <StatCard label="Pengajuan Bulan Ini" value={String(pengajuanBulanIni ?? 0)} icon={ClipboardList} color="amber" />
       </div>
 
-      {/* Rekap Pengajuan -- ringkasan jumlah dokumen per tahap alur, tiap
-          status punya warna & ikon berbeda, dan bisa diklik untuk melihat
-          daftar pengajuan dengan status tersebut. */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium text-slate-900">Rekap Pengajuan</p>
-          <span className="text-xs text-slate-400">{totalPengajuanRekap} dokumen periode ini</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {REKAP_STATUS.map((s) => {
-            const Icon = s.icon;
-            const jumlah = rekapStatusCount[s.key] ?? 0;
-            const pct = totalPengajuanRekap ? Math.round((jumlah / totalPengajuanRekap) * 100) : 0;
-            return (
-              <Link
-                key={s.key}
-                href={`/pengajuan?status=${s.key}`}
-                className={`group rounded-xl border ${s.card} p-4 transition-shadow hover:shadow-md`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${s.iconWrap}`}>
-                    <Icon className="h-4 w-4" strokeWidth={1.75} />
-                  </div>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                </div>
-                <p className={`mt-3 font-serif text-2xl ${s.count}`}>{jumlah}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{statusLabel[s.key]} &middot; {pct}%</p>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+      <DashboardCharts data={dashboardData} />
 
       <div className="bg-white rounded-2xl border border-slate-200/80 overflow-x-auto shadow-soft">
         <div className="p-5 pb-3 flex items-center justify-between">
